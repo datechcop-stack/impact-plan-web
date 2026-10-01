@@ -33,7 +33,7 @@ export async function uiLogin(page: Page, email: string, password: string): Prom
   await page.goto("/sign-in");
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 export async function inviteUser(

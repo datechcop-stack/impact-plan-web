@@ -11,18 +11,24 @@ export class ApiError extends Error {
   }
 }
 
-let csrfToken: string | null = null;
+function readCsrfCookie(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const match = document.cookie.match(/(?:^|; )ip_csrf=([^;]*)/);
+  return match ? decodeURIComponent(match[1]!) : null;
+}
 
 export async function ensureCsrf(): Promise<string> {
-  if (csrfToken) {
-    return csrfToken;
+  const fromCookie = readCsrfCookie();
+  if (fromCookie) {
+    return fromCookie;
   }
   const response = await fetch(`${API_URL}/auth/csrf`, {
     credentials: "include",
   });
   const data = (await response.json()) as { csrfToken: string };
-  csrfToken = data.csrfToken;
-  return csrfToken;
+  return data.csrfToken;
 }
 
 export async function apiFetch<T>(

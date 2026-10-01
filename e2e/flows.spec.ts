@@ -16,8 +16,9 @@ test.describe("invite → activate", () => {
     await page.getByRole("button", { name: /^Continue$/i }).click();
 
     await expect(page.getByRole("heading", { name: /Set your password/i })).toBeVisible();
-    await page.getByLabel("New password").fill("E2ePass1!");
-    await page.getByLabel("Confirm password").fill("E2ePass1!");
+    await page.getByLabel("New password").fill("E2ePass12!");
+    await page.getByLabel("Confirm password").fill("E2ePass12!");
+    await expect(page.getByRole("button", { name: /Activate account/i })).toBeEnabled();
     await page.getByRole("button", { name: /Activate account/i }).click();
 
     await expect(page).toHaveURL(/\/app\/plan/);
@@ -58,11 +59,9 @@ test.describe("edit unlock", () => {
     }
 
     await expect(page).toHaveURL(/\/app\/plan/);
-    await expect(
-      page
-        .getByRole("button", { name: /Save changes & notify admin/i })
-        .or(page.getByText(/\+ Add another entry/i)),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: "Save changes & notify admin" })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });
 
