@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { StateView } from "@/components/ui/state-view";
 import { EditRequestModal } from "@/features/plan/edit-request-modal";
 import type { MyPlanResponse, PlanEntry } from "@/features/plan/types";
+import { UserPicker } from "@/components/ui/user-picker";
 import { apiFetch } from "@/lib/api/client";
 import {
   COMPONENT_META,
@@ -455,14 +456,22 @@ export function MyPlanClient() {
                                       />
                                     </div>
                                     <div>
-                                      <Label>Tagged manager (user id)</Label>
-                                      <Input
+                                      <Label>Tagged manager</Label>
+                                      <UserPicker
                                         value={entry.managerId}
-                                        onChange={(event) => {
+                                        selectedLabel={
+                                          entry.id
+                                            ? allEntries.find((item) => item.id === entry.id)
+                                                ?.manager.fullName
+                                            : undefined
+                                        }
+                                        excludeUserId={plan.owner.id}
+                                        placeholder="Search for a manager…"
+                                        onChange={(managerId) => {
                                           const next = [...editingEntries];
                                           next[globalIndex] = {
                                             ...entry,
-                                            managerId: event.target.value,
+                                            managerId,
                                           };
                                           setEditingEntries(next);
                                         }}

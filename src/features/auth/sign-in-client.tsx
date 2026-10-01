@@ -34,13 +34,19 @@ export function SignInClient() {
 
   const requestOtp = useMutation({
     mutationFn: () =>
-      apiFetch("/auth/otp/request", {
-        method: "POST",
-        json: { email, purpose: "LOGIN" },
-      }),
-    onSuccess: () => {
+      apiFetch<{ sent: boolean; retryAfterSeconds: number; devCode?: string }>(
+        "/auth/otp/request",
+        {
+          method: "POST",
+          json: { email, purpose: "LOGIN" },
+        },
+      ),
+    onSuccess: (data) => {
       setMode("otp");
       setOtpSent(true);
+      if (data.devCode) {
+        setCode(data.devCode);
+      }
     },
   });
 

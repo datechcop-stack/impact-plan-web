@@ -1,13 +1,23 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { cn, initials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/api/client";
+
+type NavCounts = {
+  projectsAwaiting: number;
+  peopleCount: number;
+  pendingEditRequests: number;
+};
 
 const staffNav = [
-  { href: "/app/plan", label: "My Impact Plan" },
-  { href: "/app/projects", label: "Projects I Manage", badge: 0 },
-  { href: "/app/people", label: "People I Manage", badge: 0 },
-] as const;
+  { href: "/app/plan", label: "My Impact Plan", key: "plan" as const },
+  { href: "/app/projects", label: "Projects I Manage", key: "projects" as const },
+  { href: "/app/people", label: "People I Manage", key: "people" as const },
+];
 
 type AppShellProps = {
   active: "plan" | "projects" | "people";
@@ -17,6 +27,14 @@ type AppShellProps = {
 };
 
 export function AppShell({ active, year = 2026, userName = "User", children }: AppShellProps) {
+  const countsQuery = useQuery({
+    queryKey: ["nav-counts"],
+    queryFn: () => apiFetch<NavCounts>("/me/nav-counts"),
+    staleTime: 30_000,
+  });
+
+  const counts = countsQuery.data;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-white">
@@ -26,8 +44,13 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
           </Link>
           <nav className="flex flex-1 items-center gap-6" aria-label="Primary">
             {staffNav.map((item) => {
-              const key = item.href.split("/").pop() as AppShellProps["active"];
-              const isActive = key === active;
+              const isActive = item.key === active;
+              const badge =
+                item.key === "projects"
+                  ? counts?.projectsAwaiting
+                  : item.key === "people"
+                    ? counts?.peopleCount
+                    : undefined;
               return (
                 <Link
                   key={item.href}
@@ -39,9 +62,9 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
                   )}
                 >
                   {item.label}
-                  {"badge" in item ? (
+                  {badge != null && badge > 0 ? (
                     <Badge className="ml-2" variant="default">
-                      {item.badge}
+                      {badge}
                     </Badge>
                   ) : null}
                 </Link>

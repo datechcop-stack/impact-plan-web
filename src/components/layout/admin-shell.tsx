@@ -1,15 +1,25 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/api/client";
+
+type NavCounts = {
+  projectsAwaiting: number;
+  peopleCount: number;
+  pendingEditRequests: number;
+};
 
 const adminNav = [
-  { href: "/admin", label: "Overview", match: "overview" },
-  { href: "/admin/users", label: "Users & invitations", match: "users" },
-  { href: "/admin/plans", label: "Impact plans", match: "plans" },
-  { href: "/admin/edit-requests", label: "Edit requests", match: "edit-requests", badge: 0 },
-  { href: "/admin/review-cycle", label: "Review cycle", match: "review-cycle" },
-] as const;
+  { href: "/admin", label: "Overview", match: "overview" as const },
+  { href: "/admin/users", label: "Users & invitations", match: "users" as const },
+  { href: "/admin/plans", label: "Impact plans", match: "plans" as const },
+  { href: "/admin/edit-requests", label: "Edit requests", match: "edit-requests" as const },
+  { href: "/admin/review-cycle", label: "Review cycle", match: "review-cycle" as const },
+];
 
 type AdminShellProps = {
   active: (typeof adminNav)[number]["match"];
@@ -17,6 +27,14 @@ type AdminShellProps = {
 };
 
 export function AdminShell({ active, children }: AdminShellProps) {
+  const countsQuery = useQuery({
+    queryKey: ["nav-counts"],
+    queryFn: () => apiFetch<NavCounts>("/me/nav-counts"),
+    staleTime: 30_000,
+  });
+
+  const pendingEdits = countsQuery.data?.pendingEditRequests ?? 0;
+
   return (
     <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
       <aside className="flex flex-col bg-navy px-4 py-6 text-white">
@@ -39,7 +57,9 @@ export function AdminShell({ active, children }: AdminShellProps) {
                 )}
               >
                 <span>{item.label}</span>
-                {"badge" in item ? <Badge variant="success">{item.badge}</Badge> : null}
+                {item.match === "edit-requests" && pendingEdits > 0 ? (
+                  <Badge variant="success">{pendingEdits}</Badge>
+                ) : null}
               </Link>
             );
           })}

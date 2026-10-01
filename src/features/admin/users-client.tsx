@@ -9,6 +9,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StateView } from "@/components/ui/state-view";
+import { UserPicker } from "@/components/ui/user-picker";
 import { apiFetch } from "@/lib/api/client";
 
 type UserRow = {
@@ -29,6 +30,7 @@ export function AdminUsersClient() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [lineManagerId, setLineManagerId] = useState("");
   const [role, setRole] = useState<"STAFF" | "ADMIN">("STAFF");
   const [remindCreatePlan, setRemindCreatePlan] = useState(true);
 
@@ -42,12 +44,20 @@ export function AdminUsersClient() {
     mutationFn: () =>
       apiFetch("/admin/users", {
         method: "POST",
-        json: { fullName, email, jobTitle: jobTitle || undefined, role, remindCreatePlan },
+        json: {
+          fullName,
+          email,
+          jobTitle: jobTitle || undefined,
+          lineManagerId: lineManagerId || null,
+          role,
+          remindCreatePlan,
+        },
       }),
     onSuccess: async () => {
       setFullName("");
       setEmail("");
       setJobTitle("");
+      setLineManagerId("");
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
   });
@@ -178,6 +188,14 @@ export function AdminUsersClient() {
                 value={jobTitle}
                 onChange={(event) => setJobTitle(event.target.value)}
                 placeholder="e.g. Programme Associate"
+              />
+            </div>
+            <div>
+              <Label>Line manager</Label>
+              <UserPicker
+                value={lineManagerId}
+                onChange={setLineManagerId}
+                placeholder="Search for a line manager…"
               />
             </div>
             <div>

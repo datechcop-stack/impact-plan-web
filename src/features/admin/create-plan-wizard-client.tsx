@@ -10,6 +10,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StateView } from "@/components/ui/state-view";
+import { UserPicker } from "@/components/ui/user-picker";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -322,15 +323,16 @@ export function CreatePlanWizardClient() {
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <Label>Tagged manager (user id for now)</Label>
-                        <Input
+                        <Label>Tagged manager</Label>
+                        <UserPicker
                           value={entry.managerId}
-                          onChange={(event) => {
+                          excludeUserId={ownerId || undefined}
+                          placeholder="Search for a manager…"
+                          onChange={(managerId) => {
                             const next = [...entries];
-                            next[index] = { ...entry, managerId: event.target.value };
+                            next[index] = { ...entry, managerId };
                             setEntries(next);
                           }}
-                          placeholder="Select/paste manager user id"
                         />
                       </div>
                     </div>

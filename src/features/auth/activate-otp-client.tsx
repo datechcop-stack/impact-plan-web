@@ -24,11 +24,19 @@ export function ActivateOtpClient({ token }: { token: string }) {
 
   const requestMutation = useMutation({
     mutationFn: () =>
-      apiFetch<{ sent: boolean; retryAfterSeconds: number }>("/auth/otp/request", {
-        method: "POST",
-        json: { token, purpose: "ACTIVATION" },
-      }),
-    onSuccess: (data) => setCooldown(data.retryAfterSeconds),
+      apiFetch<{ sent: boolean; retryAfterSeconds: number; devCode?: string }>(
+        "/auth/otp/request",
+        {
+          method: "POST",
+          json: { token, purpose: "ACTIVATION" },
+        },
+      ),
+    onSuccess: (data) => {
+      setCooldown(data.retryAfterSeconds);
+      if (data.devCode) {
+        setCode(data.devCode);
+      }
+    },
   });
 
   const verifyMutation = useMutation({
