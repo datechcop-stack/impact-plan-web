@@ -19,6 +19,20 @@ function readCsrfCookie(): string | null {
   return match ? decodeURIComponent(match[1]!) : null;
 }
 
+function redirectToSignIn(): void {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname;
+  if (
+    path.startsWith("/sign-in") ||
+    path.startsWith("/activate") ||
+    path.startsWith("/forgot-password")
+  ) {
+    return;
+  }
+  const next = `${path}${window.location.search}`;
+  window.location.assign(`/sign-in?next=${encodeURIComponent(next)}`);
+}
+
 export async function ensureCsrf(): Promise<string> {
   const fromCookie = readCsrfCookie();
   if (fromCookie) {
@@ -27,6 +41,9 @@ export async function ensureCsrf(): Promise<string> {
   const response = await fetch(`${API_URL}/auth/csrf`, {
     credentials: "include",
   });
+  if (response.status === 401) {
+    redirectToSignIn();
+  }
   const data = (await response.json()) as { csrfToken: string };
   return data.csrfToken;
 }
@@ -51,6 +68,9 @@ export async function apiFetch<T>(
 
   const body = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401) {
+      redirectToSignIn();
+    }
     const message =
       body && typeof body === "object" && "error" in body
         ? String((body as { error: { message: string } }).error.message)

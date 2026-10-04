@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AuthShell } from "@/components/layout/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,17 @@ import { Label } from "@/components/ui/label";
 import { OtpInput } from "@/components/ui/otp-input";
 import { apiFetch, type PublicUser } from "@/lib/api/client";
 
-function dashboardFor(user: PublicUser): string {
+function dashboardFor(user: PublicUser, next: string | null): string {
+  if (next && next.startsWith("/") && !next.startsWith("//")) {
+    return next;
+  }
   return user.role === "ADMIN" ? "/admin" : "/app/plan";
 }
 
 export function SignInClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"password" | "otp">("password");
@@ -30,7 +35,7 @@ export function SignInClient() {
         json: { email, password },
       }),
     onSuccess: (data) => {
-      router.push(dashboardFor(data.user));
+      router.push(dashboardFor(data.user, next));
     },
   });
 
@@ -59,7 +64,7 @@ export function SignInClient() {
         json: { email, purpose: "LOGIN", code },
       }),
     onSuccess: (data) => {
-      router.push(dashboardFor(data.user));
+      router.push(dashboardFor(data.user, next));
     },
   });
 
