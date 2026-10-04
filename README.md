@@ -53,7 +53,8 @@ Drop the official logo into `public/brand/`. A placeholder SVG ships for scaffol
 - Build: `pnpm install --frozen-lockfile && pnpm build`
 - Start: `pnpm start` (or deploy to Vercel/Netlify with Next adapter)
 - Point `NEXT_PUBLIC_API_URL` at the deployed API **origin only** (e.g. `https://your-api.onrender.com` — no `/api` or `/v1`)
-- Keep `NEXT_PUBLIC_API_BASE=/api/v1` (relative). Browser calls go to the Next BFF route (`/api/v1/*`), which proxies to `{API_URL}/v1/*` and forwards `Set-Cookie`
+- Optional: set server-only `API_UPSTREAM_URL` to the same origin (used by the BFF proxy; falls back to `NEXT_PUBLIC_API_URL`)
+- Keep `NEXT_PUBLIC_API_BASE=/api/v1` (relative). Browser calls go to the Next BFF route (`/api/v1/*`), which proxies to `{API}/v1/*` and rewrites `Set-Cookie` for the web host
 - Do **not** set `NEXT_PUBLIC_API_BASE` to the Render URL
 - Pair with API `CORS_ORIGIN` / `APP_URL` set to this web origin, and `COOKIE_SECURE=true` on HTTPS
 

@@ -1,4 +1,13 @@
-const API_URL = process.env.NEXT_PUBLIC_API_BASE ?? "/api/v1";
+function resolveApiBase(): string {
+  const raw = process.env.NEXT_PUBLIC_API_BASE ?? "/api/v1";
+  // Absolute URLs break cookie auth (cross-site SameSite=Lax). Always stay same-origin.
+  if (/^https?:\/\//i.test(raw)) {
+    return "/api/v1";
+  }
+  return raw.startsWith("/") ? raw : `/${raw}`;
+}
+
+const API_URL = resolveApiBase();
 
 export class ApiError extends Error {
   constructor(
