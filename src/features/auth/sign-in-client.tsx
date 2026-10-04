@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { OtpInput } from "@/components/ui/otp-input";
 import { apiFetch, type PublicUser } from "@/lib/api/client";
 
-const devShortcuts = process.env.NEXT_PUBLIC_DEV_SHORTCUTS === "true";
+function dashboardFor(user: PublicUser): string {
+  return user.role === "ADMIN" ? "/admin" : "/app/plan";
+}
 
 export function SignInClient() {
   const router = useRouter();
@@ -23,12 +25,12 @@ export function SignInClient() {
 
   const passwordLogin = useMutation({
     mutationFn: () =>
-      apiFetch<{ user: PublicUser }>("/auth/login/password", {
+      apiFetch<{ user: PublicUser }>("/auth/login", {
         method: "POST",
         json: { email, password },
       }),
     onSuccess: (data) => {
-      router.push(data.user.role === "ADMIN" ? "/admin" : "/app/plan");
+      router.push(dashboardFor(data.user));
     },
   });
 
@@ -57,14 +59,8 @@ export function SignInClient() {
         json: { email, purpose: "LOGIN", code },
       }),
     onSuccess: (data) => {
-      router.push(data.user.role === "ADMIN" ? "/admin" : "/app/plan");
+      router.push(dashboardFor(data.user));
     },
-  });
-
-  const devAdmin = useMutation({
-    mutationFn: () =>
-      apiFetch<{ user: PublicUser }>("/auth/dev/login-admin", { method: "POST", json: {} }),
-    onSuccess: () => router.push("/admin"),
   });
 
   return (
@@ -153,18 +149,6 @@ export function SignInClient() {
           </p>
         )}
       </form>
-      {devShortcuts ? (
-        <div className="mt-8 flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm">
-          <span className="text-muted">Prototype shortcut</span>
-          <button
-            type="button"
-            className="font-semibold text-accent"
-            onClick={() => devAdmin.mutate()}
-          >
-            Sign in as Admin →
-          </button>
-        </div>
-      ) : null}
     </AuthShell>
   );
 }

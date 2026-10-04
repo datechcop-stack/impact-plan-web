@@ -12,7 +12,7 @@ export async function apiLogin(
   password: string,
 ): Promise<void> {
   const csrf = await getCsrf(request);
-  const response = await request.post("/api/auth/login/password", {
+  const response = await request.post("/api/auth/login", {
     headers: { "x-csrf-token": csrf },
     data: { email, password },
   });
@@ -60,7 +60,7 @@ export async function inviteUser(
     inviteToken?: string;
   };
   if (!body.inviteToken) {
-    throw new Error("inviteToken missing — set EXPOSE_DEV_SECRETS or DEV_SHORTCUTS on the API");
+    throw new Error("inviteToken missing — set EXPOSE_DEV_SECRETS=true on the API for e2e");
   }
   return { inviteToken: body.inviteToken, userId: body.user.id };
 }
