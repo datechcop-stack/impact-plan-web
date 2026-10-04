@@ -12,9 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
-import { EditRequestModal } from "@/features/plan/edit-request-modal";
-import type { MyPlanResponse, PlanEntry } from "@/features/plan/types";
+import { Textarea } from "@/components/ui/textarea";
 import { UserPicker } from "@/components/ui/user-picker";
+import { EditRequestModal } from "@/features/plan/edit-request-modal";
+import { EntryObjectivesEditor } from "@/features/plan/entry-objectives-editor";
+import { EntryObjectivesView } from "@/features/plan/entry-objectives-view";
+import {
+  emptyObjectives,
+  toObjectiveDrafts,
+  type ObjectiveDraft,
+} from "@/features/plan/objectives";
+import type { MyPlanResponse, PlanEntry } from "@/features/plan/types";
 import { apiFetch } from "@/lib/api/client";
 import {
   COMPONENT_META,
@@ -43,8 +51,7 @@ export function MyPlanClient() {
       id?: string;
       componentType: ComponentType;
       title: string;
-      objective: string;
-      successCriteria: string;
+      objectives: ObjectiveDraft[];
       managerId: string;
       dueDate: string;
     }>
@@ -122,8 +129,7 @@ export function MyPlanClient() {
           id: entry.id,
           componentType: component.type,
           title: entry.title,
-          objective: entry.objective,
-          successCriteria: entry.successCriteria,
+          objectives: toObjectiveDrafts(entry.objectives),
           managerId: entry.manager.id,
           dueDate: entry.dueDate.slice(0, 10),
         })),
@@ -158,19 +164,20 @@ export function MyPlanClient() {
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
           My Impact Plan 2026
         </h1>
-        <Card className="mt-8 max-w-xl">
-          <CardTitle>No plan yet</CardTitle>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            Create your Impact Plan to set goals across Projects, Business Development, Personal
-            Development, and Communities of Practice.
-          </p>
-          <Link
-            href="/app/plan/new"
-            className="mt-5 inline-flex h-12 items-center justify-center rounded-xl bg-navy px-6 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition-all hover:bg-navy-soft"
-          >
-            Create my Impact Plan
-          </Link>
-        </Card>
+        <StateView
+          className="mt-8 max-w-xl"
+          state="empty"
+          title="No plan yet"
+          description="Create your Impact Plan to set goals across Projects, Business Development, Personal Development, and Communities of Practice."
+          action={
+            <Link
+              href="/app/plan/new"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-navy px-6 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition-all hover:bg-navy-soft"
+            >
+              Create my Impact Plan
+            </Link>
+          }
+        />
       </AppShell>
     );
   }
@@ -332,17 +339,11 @@ export function MyPlanClient() {
                           {COMPONENT_META[component.type].label} · {component.weight}%
                         </p>
                         <h2 className="mt-1 text-xl font-extrabold text-navy">{entry.title}</h2>
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                          <div className="rounded-lg bg-background p-3 text-sm">
-                            <p className="text-xs font-semibold uppercase text-muted">Objective</p>
-                            <p className="mt-1">{entry.objective}</p>
-                          </div>
-                          <div className="rounded-lg bg-background p-3 text-sm">
-                            <p className="text-xs font-semibold uppercase text-muted">
-                              Success criteria
-                            </p>
-                            <p className="mt-1">{entry.successCriteria}</p>
-                          </div>
+                        <div className="mt-4 rounded-lg bg-background p-3">
+                          <p className="text-xs font-semibold uppercase text-muted">
+                            Objectives & success criteria
+                          </p>
+                          <EntryObjectivesView className="mt-2" objectives={entry.objectives} />
                         </div>
                         <p className="mt-4 text-sm font-semibold text-navy">How did it go?</p>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -368,9 +369,9 @@ export function MyPlanClient() {
                           <Label htmlFor={`result-${entry.id}`}>
                             Your result & self-assessment
                           </Label>
-                          <textarea
+                          <Textarea
                             id={`result-${entry.id}`}
-                            className="mt-1 min-h-28 w-full rounded-lg border border-border px-3 py-2 text-sm"
+                            className="mt-1 h-28"
                             value={draftText}
                             onChange={(event) => setDraftText(event.target.value)}
                           />
@@ -453,36 +454,14 @@ export function MyPlanClient() {
                                         }}
                                       />
                                     </div>
-                                    <div>
-                                      <Label>Objective</Label>
-                                      <textarea
-                                        className="min-h-20 w-full rounded-lg border border-border px-3 py-2 text-sm"
-                                        value={entry.objective}
-                                        onChange={(event) => {
-                                          const next = [...editingEntries];
-                                          next[globalIndex] = {
-                                            ...entry,
-                                            objective: event.target.value,
-                                          };
-                                          setEditingEntries(next);
-                                        }}
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label>Success criteria</Label>
-                                      <textarea
-                                        className="min-h-20 w-full rounded-lg border border-border px-3 py-2 text-sm"
-                                        value={entry.successCriteria}
-                                        onChange={(event) => {
-                                          const next = [...editingEntries];
-                                          next[globalIndex] = {
-                                            ...entry,
-                                            successCriteria: event.target.value,
-                                          };
-                                          setEditingEntries(next);
-                                        }}
-                                      />
-                                    </div>
+                                    <EntryObjectivesEditor
+                                      value={entry.objectives}
+                                      onChange={(objectives) => {
+                                        const next = [...editingEntries];
+                                        next[globalIndex] = { ...entry, objectives };
+                                        setEditingEntries(next);
+                                      }}
+                                    />
                                     <div>
                                       <Label>Tagged manager</Label>
                                       <UserPicker
@@ -546,8 +525,7 @@ export function MyPlanClient() {
                                 {
                                   componentType: component.type,
                                   title: "",
-                                  objective: "",
-                                  successCriteria: "",
+                                  objectives: emptyObjectives(),
                                   managerId: "",
                                   dueDate: `${plan.year}-12-31`,
                                 },
@@ -557,13 +535,21 @@ export function MyPlanClient() {
                             + Add another entry
                           </Button>
                         </div>
+                      ) : component.entries.length === 0 ? (
+                        <StateView
+                          className="mt-4"
+                          state="empty"
+                          size="compact"
+                          title="No entries yet"
+                          description="Entries will appear here once they are added to this component."
+                        />
                       ) : (
                         <div className="mt-4 overflow-x-auto">
                           <table className="w-full text-left text-sm">
                             <thead className="text-xs uppercase text-muted">
                               <tr>
-                                <th className="py-2">Entry & objective</th>
-                                <th>Success criteria</th>
+                                <th className="py-2">Entry</th>
+                                <th>Objectives & criteria</th>
                                 <th>Manager</th>
                                 <th>Due</th>
                               </tr>
@@ -573,9 +559,10 @@ export function MyPlanClient() {
                                 <tr key={entry.id} className="border-t border-border align-top">
                                   <td className="py-3">
                                     <p className="font-semibold text-navy">{entry.title}</p>
-                                    <p className="text-muted">{entry.objective}</p>
                                   </td>
-                                  <td className="max-w-xs">{entry.successCriteria}</td>
+                                  <td className="max-w-md py-3">
+                                    <EntryObjectivesView compact objectives={entry.objectives} />
+                                  </td>
                                   <td>{entry.manager.fullName}</td>
                                   <td>
                                     {new Date(entry.dueDate).toLocaleDateString(undefined, {

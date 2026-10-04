@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
+import { EntryObjectivesView } from "@/features/plan/entry-objectives-view";
+import type { ObjectiveView } from "@/features/plan/objectives";
 import { apiFetch } from "@/lib/api/client";
 import {
   COMPONENT_META,
@@ -43,8 +45,7 @@ type AdminPlanDetail = {
     entries: Array<{
       id: string;
       title: string;
-      objective: string;
-      successCriteria: string;
+      objectives: ObjectiveView[];
       dueDate: string;
       manager: { id: string; fullName: string };
       selfAssessment: {
@@ -176,7 +177,13 @@ export function AdminPlanDetailClient() {
                     </div>
                   </div>
                   {component.entries.length === 0 ? (
-                    <p className="mt-3 text-sm text-muted">No entries yet.</p>
+                    <StateView
+                      className="mt-3"
+                      state="empty"
+                      size="compact"
+                      title="No entries yet"
+                      description="This component has no entries on the plan."
+                    />
                   ) : (
                     <ul className="mt-4 space-y-4">
                       {component.entries.map((entry) => (
@@ -185,7 +192,11 @@ export function AdminPlanDetailClient() {
                           className="border-t border-border pt-4 first:border-0 first:pt-0"
                         >
                           <p className="font-semibold text-navy">{entry.title}</p>
-                          <p className="mt-1 text-sm text-muted">{entry.objective}</p>
+                          <EntryObjectivesView
+                            className="mt-2"
+                            compact
+                            objectives={entry.objectives}
+                          />
                           <p className="mt-2 text-xs text-muted">
                             Manager: {entry.manager.fullName} · Due{" "}
                             {new Date(entry.dueDate).toLocaleDateString()}
@@ -254,7 +265,13 @@ export function AdminPlanDetailClient() {
           <Card>
             <CardTitle>Recent activity</CardTitle>
             {plan.changeLogs.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">No activity yet.</p>
+              <StateView
+                className="mt-3"
+                state="empty"
+                size="compact"
+                title="No activity yet"
+                description="Changes to this plan will show up here."
+              />
             ) : (
               <ul className="mt-3 space-y-3 text-sm">
                 {plan.changeLogs.map((log) => (

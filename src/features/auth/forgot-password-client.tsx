@@ -2,6 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PasswordChecklist } from "@/components/auth/password-checklist";
 import { AuthShell } from "@/components/layout/auth-shell";
@@ -15,6 +16,7 @@ import { apiFetch } from "@/lib/api/client";
 import { isPasswordValid } from "@/lib/password";
 
 export function ForgotPasswordClient() {
+  const router = useRouter();
   const toast = useToast();
   const [step, setStep] = useState<"request" | "reset">("request");
   const [email, setEmail] = useState("");
@@ -45,6 +47,7 @@ export function ForgotPasswordClient() {
       }),
     onSuccess: (data) => {
       toast.success("Password updated", data.message);
+      router.push("/sign-in");
     },
     onError: (error) => {
       toast.error("Reset failed", error.message);

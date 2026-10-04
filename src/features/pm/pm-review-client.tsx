@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
+import { Textarea } from "@/components/ui/textarea";
+import { EntryObjectivesView } from "@/features/plan/entry-objectives-view";
+import type { ObjectiveView } from "@/features/plan/objectives";
 import { apiFetch } from "@/lib/api/client";
 import { COMPONENT_META, type ComponentType } from "@/lib/plan";
 import { cn } from "@/lib/utils";
@@ -20,8 +23,7 @@ type EntryResponse = {
   entry: {
     id: string;
     title: string;
-    objective: string;
-    successCriteria: string;
+    objectives: ObjectiveView[];
     dueDate: string;
     componentType: ComponentType;
     weight: number;
@@ -147,15 +149,11 @@ export function PmReviewClient() {
               ? `Submitted ${new Date(entry.submittedAt).toLocaleDateString()}`
               : "Not submitted"}
           </p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg bg-background p-3 text-sm">
-              <p className="text-xs font-semibold uppercase text-muted">Objective</p>
-              <p className="mt-1">{entry.objective}</p>
-            </div>
-            <div className="rounded-lg bg-background p-3 text-sm">
-              <p className="text-xs font-semibold uppercase text-muted">Success criteria</p>
-              <p className="mt-1">{entry.successCriteria}</p>
-            </div>
+          <div className="mt-4 rounded-lg bg-background p-3">
+            <p className="text-xs font-semibold uppercase text-muted">
+              Objectives & success criteria
+            </p>
+            <EntryObjectivesView className="mt-2" objectives={entry.objectives} />
           </div>
           {entry.selfAssessment ? (
             <div className="mt-6">
@@ -233,9 +231,9 @@ export function PmReviewClient() {
           </div>
           <div className="mt-4">
             <Label htmlFor="comment">PM comment</Label>
-            <textarea
+            <Textarea
               id="comment"
-              className="mt-1 min-h-28 w-full rounded-lg border border-border px-3 py-2 text-sm"
+              className="mt-1 h-28"
               value={comment}
               disabled={readOnly}
               onChange={(event) => setComment(event.target.value)}

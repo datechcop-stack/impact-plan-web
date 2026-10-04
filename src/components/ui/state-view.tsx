@@ -14,14 +14,24 @@ type StateViewProps = {
   description?: string;
   className?: string;
   action?: ReactNode;
+  /** Use inside cards/lists where a full hero empty state is too large. */
+  size?: "default" | "compact";
 };
 
-export function StateView({ state, title, description, className, action }: StateViewProps) {
+export function StateView({
+  state,
+  title,
+  description,
+  className,
+  action,
+  size = "default",
+}: StateViewProps) {
   if (state === "loading") {
     return (
       <div
         className={cn(
           "rounded-2xl border border-border/80 bg-white p-6 shadow-sm shadow-navy/5",
+          size === "compact" && "rounded-xl p-4 shadow-none",
           className,
         )}
         role="status"
@@ -41,14 +51,21 @@ export function StateView({ state, title, description, className, action }: Stat
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center shadow-sm shadow-navy/5",
+        "flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-white text-center shadow-sm shadow-navy/5",
+        size === "compact" ? "rounded-xl px-4 py-6 shadow-none" : "px-6 py-12",
         className,
       )}
       role={state === "error" ? "alert" : "status"}
     >
-      <p className="text-base font-semibold text-navy">{title ?? states[state]}</p>
-      {description ? <p className="mt-2 max-w-md text-sm text-muted">{description}</p> : null}
-      {action ? <div className="mt-4">{action}</div> : null}
+      <p className={cn("font-semibold text-navy", size === "compact" ? "text-sm" : "text-base")}>
+        {title ?? states[state]}
+      </p>
+      {description ? (
+        <p className={cn("mt-2 max-w-md text-muted", size === "compact" ? "text-xs" : "text-sm")}>
+          {description}
+        </p>
+      ) : null}
+      {action ? <div className={cn(size === "compact" ? "mt-3" : "mt-4")}>{action}</div> : null}
     </div>
   );
 }

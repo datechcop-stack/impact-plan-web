@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StateView } from "@/components/ui/state-view";
 import { UserPicker } from "@/components/ui/user-picker";
+import { EntryObjectivesEditor } from "@/features/plan/entry-objectives-editor";
+import { emptyObjectives, type ObjectiveDraft } from "@/features/plan/objectives";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -54,8 +56,7 @@ export function CreatePlanWizardClient() {
     Array<{
       type: ComponentType;
       title: string;
-      objective: string;
-      successCriteria: string;
+      objectives: ObjectiveDraft[];
       managerId: string;
       dueDate: string;
     }>
@@ -240,8 +241,7 @@ export function CreatePlanWizardClient() {
                     {
                       type: components.find((c) => c.enabled)?.type ?? "PROJECTS",
                       title: "",
-                      objective: "",
-                      successCriteria: "",
+                      objectives: emptyObjectives(),
                       managerId: "",
                       dueDate: "2026-12-31",
                     },
@@ -300,28 +300,14 @@ export function CreatePlanWizardClient() {
                           }}
                         />
                       </div>
-                      <div>
-                        <Label>Objective</Label>
-                        <Input
-                          value={entry.objective}
-                          onChange={(event) => {
-                            const next = [...entries];
-                            next[index] = { ...entry, objective: event.target.value };
-                            setEntries(next);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label>Success criteria</Label>
-                        <Input
-                          value={entry.successCriteria}
-                          onChange={(event) => {
-                            const next = [...entries];
-                            next[index] = { ...entry, successCriteria: event.target.value };
-                            setEntries(next);
-                          }}
-                        />
-                      </div>
+                      <EntryObjectivesEditor
+                        value={entry.objectives}
+                        onChange={(objectives) => {
+                          const next = [...entries];
+                          next[index] = { ...entry, objectives };
+                          setEntries(next);
+                        }}
+                      />
                       <div className="md:col-span-2">
                         <Label>Tagged manager</Label>
                         <UserPicker
@@ -339,7 +325,12 @@ export function CreatePlanWizardClient() {
                   </div>
                 ))}
                 {entries.length === 0 ? (
-                  <StateView state="empty" title="No starting entries yet" />
+                  <StateView
+                    state="empty"
+                    size="compact"
+                    title="No starting entries yet"
+                    description="Optional — you can leave components empty and let the owner fill them in later."
+                  />
                 ) : null}
               </div>
             </>

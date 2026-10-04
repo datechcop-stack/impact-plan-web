@@ -12,7 +12,7 @@ import { TwoColumnFormSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { useToast } from "@/components/ui/toast";
 import { UserPicker } from "@/components/ui/user-picker";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, type PublicUser } from "@/lib/api/client";
 
 type UserRow = {
   id: string;
@@ -36,6 +36,12 @@ export function AdminUsersClient() {
   const [lineManagerId, setLineManagerId] = useState("");
   const [role, setRole] = useState<"STAFF" | "ADMIN">("STAFF");
   const [remindCreatePlan, setRemindCreatePlan] = useState(true);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
+  const meQuery = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: () => apiFetch<PublicUser>("/auth/me"),
+  });
 
   const usersQuery = useQuery({
     queryKey: ["admin-users", q],
@@ -81,6 +87,27 @@ export function AdminUsersClient() {
     },
   });
 
+  const removeMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: true; mode: "deleted" | "disabled" }>(`/admin/users/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: async (data, id) => {
+      const removed = usersQuery.data?.items.find((user) => user.id === id);
+      toast.success(
+        data.mode === "deleted" ? "User removed" : "User disabled",
+        data.mode === "deleted"
+          ? `${removed?.fullName ?? "User"} was deleted.`
+          : `${removed?.fullName ?? "User"} can no longer sign in.`,
+      );
+      setConfirmRemoveId(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (error) => {
+      toast.error("Remove failed", error.message);
+    },
+  });
+
   return (
     <AdminShell active="users">
       <p className="text-xs font-semibold tracking-[0.18em] text-accent">ADMIN</p>
@@ -88,9 +115,10 @@ export function AdminUsersClient() {
         Users & invitations
       </h1>
       <p className="mt-1.5 text-sm text-muted">
-        Invite staff, set their line manager and track activation.
+        Invite staff, set their line manager, track activation, and remove people who should no
+        longer have access.
       </p>
-      {usersQuery.isLoading ? (
+      {usersQuery.isLoading || meQuery.isLoading ? (
         <TwoColumnFormSkeleton />
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -103,7 +131,12 @@ export function AdminUsersClient() {
             {usersQuery.isError ? (
               <StateView className="mt-4" state="error" description="Sign in as admin first." />
             ) : !usersQuery.data?.items.length ? (
-              <StateView className="mt-4" state="empty" title="No users yet" />
+              <StateView
+                className="mt-4"
+                state="empty"
+                title="No users yet"
+                description="Invite your first staff member to get started."
+              />
             ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -117,55 +150,98 @@ export function AdminUsersClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {usersQuery.data.items.map((user) => (
-                      <tr key={user.id} className="border-t border-border">
-                        <td className="py-3">
-                          <p className="font-semibold text-navy">{user.fullName}</p>
-                          <p className="text-muted">{user.email}</p>
-                        </td>
-                        <td>{user.lineManagerName ?? "—"}</td>
-                        <td>
-                          {user.authMethod === "PASSWORD"
-                            ? "Password"
-                            : user.authMethod === "OTP"
-                              ? "One-time code"
-                              : "Not chosen"}
-                        </td>
-                        <td>
-                          <Badge
-                            variant={
-                              user.status === "ACTIVE"
-                                ? "success"
-                                : user.inviteStatus === "EXPIRED"
-                                  ? "danger"
-                                  : "warning"
-                            }
-                          >
-                            {user.status === "ACTIVE"
-                              ? "Active"
-                              : user.inviteStatus === "EXPIRED"
-                                ? "Invite expired"
-                                : "Invited"}
-                          </Badge>
-                        </td>
-                        <td className="text-right">
-                          {user.status === "INVITED" ? (
-                            <Button
-                              variant="link"
-                              onClick={() => resendMutation.mutate(user.id)}
-                              loading={
-                                resendMutation.isPending && resendMutation.variables === user.id
+                    {usersQuery.data.items.map((user) => {
+                      const isSelf = meQuery.data?.id === user.id;
+                      const confirming = confirmRemoveId === user.id;
+                      return (
+                        <tr key={user.id} className="border-t border-border">
+                          <td className="py-3">
+                            <p className="font-semibold text-navy">{user.fullName}</p>
+                            <p className="text-muted">{user.email}</p>
+                          </td>
+                          <td>{user.lineManagerName ?? "—"}</td>
+                          <td>
+                            {user.authMethod === "PASSWORD"
+                              ? "Password"
+                              : user.authMethod === "OTP"
+                                ? "One-time code"
+                                : "Not chosen"}
+                          </td>
+                          <td>
+                            <Badge
+                              variant={
+                                user.status === "ACTIVE"
+                                  ? "success"
+                                  : user.status === "DISABLED"
+                                    ? "muted"
+                                    : user.inviteStatus === "EXPIRED"
+                                      ? "danger"
+                                      : "warning"
                               }
-                              loadingText="Sending…"
                             >
-                              Resend
-                            </Button>
-                          ) : (
-                            <span className="text-muted">Edit</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                              {user.status === "ACTIVE"
+                                ? "Active"
+                                : user.status === "DISABLED"
+                                  ? "Removed"
+                                  : user.inviteStatus === "EXPIRED"
+                                    ? "Invite expired"
+                                    : "Invited"}
+                            </Badge>
+                          </td>
+                          <td className="text-right">
+                            <div className="flex flex-wrap items-center justify-end gap-3">
+                              {user.status === "INVITED" ? (
+                                <Button
+                                  variant="link"
+                                  onClick={() => resendMutation.mutate(user.id)}
+                                  loading={
+                                    resendMutation.isPending && resendMutation.variables === user.id
+                                  }
+                                  loadingText="Sending…"
+                                >
+                                  Resend
+                                </Button>
+                              ) : null}
+                              {user.status !== "DISABLED" && !isSelf ? (
+                                confirming ? (
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      loading={
+                                        removeMutation.isPending &&
+                                        removeMutation.variables === user.id
+                                      }
+                                      loadingText="Removing…"
+                                      onClick={() => removeMutation.mutate(user.id)}
+                                    >
+                                      Confirm remove
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setConfirmRemoveId(null)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    variant="link"
+                                    className="text-danger"
+                                    onClick={() => setConfirmRemoveId(user.id)}
+                                  >
+                                    Remove
+                                  </Button>
+                                )
+                              ) : isSelf ? (
+                                <span className="text-xs text-muted">You</span>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

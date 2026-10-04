@@ -133,7 +133,13 @@ export function AdminOverviewClient() {
             <Card>
               <CardTitle>Recent activity</CardTitle>
               {overviewQuery.data!.recentActivity.length === 0 ? (
-                <p className="mt-3 text-sm text-muted">No activity yet.</p>
+                <StateView
+                  className="mt-3"
+                  state="empty"
+                  size="compact"
+                  title="No activity yet"
+                  description="Invites, plan changes, and reviews will appear here."
+                />
               ) : (
                 <ul className="mt-3 space-y-2 text-sm">
                   {overviewQuery.data!.recentActivity.map((item) => (

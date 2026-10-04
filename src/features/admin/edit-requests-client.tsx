@@ -102,7 +102,12 @@ export function EditRequestsClient() {
       ) : listQuery.isError ? (
         <StateView className="mt-6" state="error" />
       ) : !listQuery.data?.items.length ? (
-        <StateView className="mt-6" state="empty" title="Nothing here" />
+        <StateView
+          className="mt-6"
+          state="empty"
+          title="No edit requests"
+          description="When staff request changes to a locked plan, they will show up here."
+        />
       ) : tab === "pending" ? (
         <div className="mt-6 space-y-4">
           {pendingItems.map((item) => (

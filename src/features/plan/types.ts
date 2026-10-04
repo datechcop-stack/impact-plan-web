@@ -1,8 +1,9 @@
+import type { ObjectiveView } from "@/features/plan/objectives";
+
 export type PlanEntry = {
   id: string;
   title: string;
-  objective: string;
-  successCriteria: string;
+  objectives: ObjectiveView[];
   dueDate: string;
   manager: { id: string; fullName: string };
   selfAssessment: {
