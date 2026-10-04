@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// OpenAPI paths already include /v1; proxy only the /api prefix.
+const API_URL = "/api";
 
 export async function customFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${url}`, {

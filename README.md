@@ -42,18 +42,19 @@ Drop the official logo into `public/brand/`. A placeholder SVG ships for scaffol
 
 ## Env vars
 
-| Variable               | Purpose                                                    |
-| ---------------------- | ---------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`  | Upstream API origin used by Next rewrites (server-side)    |
-| `NEXT_PUBLIC_API_BASE` | Browser API base — keep `/api` so cookies stay same-origin |
+| Variable               | Purpose                                                       |
+| ---------------------- | ------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`  | Upstream API origin used by Next rewrites (server-side)       |
+| `NEXT_PUBLIC_API_BASE` | Browser API base — keep `/api/v1` so cookies stay same-origin |
 
 ## Deployment notes
 
 - Node 20+
 - Build: `pnpm install --frozen-lockfile && pnpm build`
 - Start: `pnpm start` (or deploy to Vercel/Netlify with Next adapter)
-- Point `NEXT_PUBLIC_API_URL` at the deployed API (reachable from the Next server)
-- Keep `NEXT_PUBLIC_API_BASE=/api` so the browser talks same-origin and session cookies work
+- Point `NEXT_PUBLIC_API_URL` at the deployed API **origin only** (e.g. `https://your-api.onrender.com` — no `/api` or `/v1`)
+- Keep `NEXT_PUBLIC_API_BASE=/api/v1` (relative) so the browser stays same-origin; Next rewrites to `{API_URL}/v1/...`
+- Do **not** set `NEXT_PUBLIC_API_BASE` to the Render URL
 - Pair with API `CORS_ORIGIN` / `APP_URL` set to this web origin, and `COOKIE_SECURE=true` on HTTPS
 
 ## Scripts

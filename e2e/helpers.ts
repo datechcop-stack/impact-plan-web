@@ -1,7 +1,7 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 
 async function getCsrf(request: APIRequestContext): Promise<string> {
-  const response = await request.get("/api/auth/csrf");
+  const response = await request.get("/api/v1/auth/csrf");
   const body = (await response.json()) as { csrfToken: string };
   return body.csrfToken;
 }
@@ -12,7 +12,7 @@ export async function apiLogin(
   password: string,
 ): Promise<void> {
   const csrf = await getCsrf(request);
-  const response = await request.post("/api/auth/login", {
+  const response = await request.post("/api/v1/auth/login", {
     headers: { "x-csrf-token": csrf },
     data: { email, password },
   });
@@ -23,7 +23,7 @@ export async function apiLogin(
 
 export async function apiLogout(request: APIRequestContext): Promise<void> {
   const csrf = await getCsrf(request);
-  await request.post("/api/auth/logout", {
+  await request.post("/api/v1/auth/logout", {
     headers: { "x-csrf-token": csrf },
     data: {},
   });
@@ -42,7 +42,7 @@ export async function inviteUser(
 ): Promise<{ inviteToken: string; userId: string }> {
   await apiLogin(request, "admin@devafrique.com", "AdminPass1!");
   const csrf = await getCsrf(request);
-  const response = await request.post("/api/admin/users", {
+  const response = await request.post("/api/v1/admin/users", {
     headers: { "x-csrf-token": csrf },
     data: {
       fullName: input.fullName,
