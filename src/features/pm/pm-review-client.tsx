@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import { COMPONENT_META, type ComponentType } from "@/lib/plan";
@@ -103,7 +104,7 @@ export function PmReviewClient() {
   if (entryQuery.isLoading) {
     return (
       <AppShell active="projects">
-        <StateView state="loading" />
+        <PlanPageSkeleton />
       </AppShell>
     );
   }

@@ -56,7 +56,7 @@ export type MyPlanResponse = {
       createdAt: string;
       actor: { fullName: string };
     }>;
-  };
+  } | null;
   reviewCycle: {
     windowOpens: string;
     selfAssessmentDeadline: string;
@@ -72,5 +72,5 @@ export type MyPlanResponse = {
     scoredWeightTotal: number;
     finalScore: number | null;
     isComplete: boolean;
-  };
+  } | null;
 };

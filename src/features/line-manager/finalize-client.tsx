@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -106,7 +107,7 @@ export function FinalizeClient() {
   if (planQuery.isLoading) {
     return (
       <AppShell active="people">
-        <StateView state="loading" />
+        <PlanPageSkeleton />
       </AppShell>
     );
   }

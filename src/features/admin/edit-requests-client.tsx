@@ -6,6 +6,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ListPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -65,11 +66,14 @@ export function EditRequestsClient() {
 
   return (
     <AdminShell active="edit-requests">
-      <h1 className="text-2xl font-extrabold text-navy">Edit requests</h1>
-      <p className="mt-1 text-sm text-muted">
+      <p className="text-xs font-semibold tracking-[0.18em] text-accent">ADMIN</p>
+      <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
+        Edit requests
+      </h1>
+      <p className="mt-1.5 text-sm text-muted">
         Unlock the whole plan or just one component. Re-lock it when the person has saved.
       </p>
-      <div className="mt-6 flex gap-4 border-b border-border">
+      <div className="mt-6 flex gap-2 rounded-2xl border border-border/80 bg-white p-1.5 shadow-sm shadow-navy/5">
         {(
           [
             ["pending", "Pending"],
@@ -81,8 +85,10 @@ export function EditRequestsClient() {
             key={value}
             type="button"
             className={cn(
-              "pb-2 text-sm font-semibold",
-              tab === value ? "border-b-2 border-navy text-navy" : "text-muted",
+              "flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition-colors",
+              tab === value
+                ? "bg-navy text-white shadow-sm"
+                : "text-muted hover:bg-accent-soft hover:text-navy",
             )}
             onClick={() => setTab(value)}
           >
@@ -92,7 +98,7 @@ export function EditRequestsClient() {
       </div>
 
       {listQuery.isLoading ? (
-        <StateView className="mt-6" state="loading" />
+        <ListPageSkeleton className="mt-6" stats={0} rows={4} />
       ) : listQuery.isError ? (
         <StateView className="mt-6" state="error" />
       ) : !listQuery.data?.items.length ? (

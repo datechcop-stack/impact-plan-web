@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ListPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import { COMPONENT_META, type ComponentType } from "@/lib/plan";
@@ -45,13 +46,16 @@ export function ProjectsManageClient() {
 
   return (
     <AppShell active="projects">
-      <h1 className="text-2xl font-extrabold text-navy">Projects I Manage</h1>
-      <p className="mt-1 text-sm text-muted">
+      <p className="text-xs font-semibold tracking-[0.18em] text-accent">MANAGER</p>
+      <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
+        Projects I Manage
+      </h1>
+      <p className="mt-1.5 text-sm text-muted">
         Entries across all components where you&apos;re tagged as the Manager.
       </p>
 
       {listQuery.isLoading ? (
-        <StateView className="mt-8" state="loading" />
+        <ListPageSkeleton />
       ) : listQuery.isError ? (
         <StateView className="mt-8" state="error" description="Sign in to view tagged entries." />
       ) : (
@@ -65,11 +69,23 @@ export function ProjectsManageClient() {
                 ["PM Reviewed", listQuery.data!.stats.reviewed, false],
               ] as const
             ).map(([label, value, highlight]) => (
-              <Card key={label} className={cn(highlight && "border-accent")}>
+              <Card
+                key={label}
+                className={cn("relative overflow-hidden", highlight && "border-accent")}
+              >
+                <div
+                  aria-hidden
+                  className={cn(
+                    "absolute inset-x-0 top-0 h-1",
+                    highlight
+                      ? "bg-gradient-to-r from-accent to-accent/30"
+                      : "bg-gradient-to-r from-navy/40 to-navy/10",
+                  )}
+                />
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
                 <p
                   className={cn(
-                    "mt-2 text-3xl font-extrabold",
+                    "mt-3 text-3xl font-extrabold tracking-tight",
                     label === "PM Reviewed" ? "text-success" : "text-navy",
                   )}
                 >

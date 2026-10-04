@@ -7,6 +7,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -94,7 +95,7 @@ export function AdminPlanDetailClient() {
   if (planQuery.isLoading) {
     return (
       <AdminShell active="plans">
-        <StateView state="loading" />
+        <PlanPageSkeleton />
       </AdminShell>
     );
   }

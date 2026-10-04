@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${nunito.variable} font-sans antialiased`}>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   );

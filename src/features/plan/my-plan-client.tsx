@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PlanProgress } from "@/components/plan/plan-progress";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { EditRequestModal } from "@/features/plan/edit-request-modal";
 import type { MyPlanResponse, PlanEntry } from "@/features/plan/types";
@@ -103,7 +105,8 @@ export function MyPlanClient() {
   }
 
   const isEditing =
-    planQuery.data?.plan.status === "PARTLY_UNLOCKED" || planQuery.data?.plan.status === "UNLOCKED";
+    planQuery.data?.plan?.status === "PARTLY_UNLOCKED" ||
+    planQuery.data?.plan?.status === "UNLOCKED";
 
   useEffect(() => {
     const current = planQuery.data?.plan;
@@ -131,12 +134,12 @@ export function MyPlanClient() {
   if (planQuery.isLoading) {
     return (
       <AppShell active="plan">
-        <StateView state="loading" title="Loading your plan…" />
+        <PlanPageSkeleton />
       </AppShell>
     );
   }
 
-  if (planQuery.isError || !plan) {
+  if (planQuery.isError) {
     return (
       <AppShell active="plan">
         <StateView
@@ -144,6 +147,30 @@ export function MyPlanClient() {
           title="Could not load your plan"
           description={(planQuery.error as Error | null)?.message ?? "Sign in and try again."}
         />
+      </AppShell>
+    );
+  }
+
+  if (!plan) {
+    return (
+      <AppShell active="plan">
+        <p className="text-xs font-semibold tracking-[0.18em] text-accent">MY PLAN</p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
+          My Impact Plan 2026
+        </h1>
+        <Card className="mt-8 max-w-xl">
+          <CardTitle>No plan yet</CardTitle>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Create your Impact Plan to set goals across Projects, Business Development, Personal
+            Development, and Communities of Practice.
+          </p>
+          <Link
+            href="/app/plan/new"
+            className="mt-5 inline-flex h-12 items-center justify-center rounded-xl bg-navy px-6 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition-all hover:bg-navy-soft"
+          >
+            Create my Impact Plan
+          </Link>
+        </Card>
       </AppShell>
     );
   }
@@ -174,13 +201,14 @@ export function MyPlanClient() {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-extrabold text-navy">
+          <p className="text-xs font-semibold tracking-[0.18em] text-accent">MY PLAN</p>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
               {isSelfAssessment ? `Self-assessment ${plan.year}` : `My Impact Plan ${plan.year}`}
             </h1>
             <Badge variant={statusBadgeVariant(plan.status)}>{statusLabel(plan.status)}</Badge>
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1.5 text-sm text-muted">
             {plan.owner.fullName}
             {plan.owner.jobTitle ? ` · ${plan.owner.jobTitle}` : ""}
             {plan.owner.lineManager ? ` · Line manager: ${plan.owner.lineManager.fullName}` : ""}
@@ -604,20 +632,20 @@ export function MyPlanClient() {
             </>
           ) : null}
 
-          {isInReview ? (
+          {isInReview && planQuery.data?.score ? (
             <Card>
               <CardTitle>Weighted score</CardTitle>
               <p className="mt-2 text-3xl font-extrabold text-navy">
-                {roundDisplay(planQuery.data!.score.provisionalPoints)}
+                {roundDisplay(planQuery.data.score.provisionalPoints)}
                 <span className="ml-2 text-base font-semibold text-muted">
-                  of {planQuery.data!.score.scoredWeightTotal} points scored so far
+                  of {planQuery.data.score.scoredWeightTotal} points scored so far
                 </span>
               </p>
               <p className="mt-2 text-xs text-muted">
                 Provisional. The final score out of 100% appears when all components are scored.
               </p>
               <ul className="mt-4 space-y-2 text-sm">
-                {planQuery.data!.score.components.map((component) => (
+                {planQuery.data.score.components.map((component) => (
                   <li key={component.type} className="flex justify-between gap-2">
                     <span>
                       {COMPONENT_META[component.type as ComponentType]?.shortLabel ??

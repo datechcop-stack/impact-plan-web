@@ -69,6 +69,7 @@ Drop the official logo into `public/brand/`. A placeholder SVG ships for scaffol
 | `/activate/[token]` | Choose sign-in method                                     |
 | `/sign-in`          | Sign in                                                   |
 | `/app/plan`         | My Impact Plan / self-assessment / tracker                |
+| `/app/plan/new`     | Create my Impact Plan (staff self-serve)                  |
 | `/app/projects`     | Projects I Manage                                         |
 | `/app/people`       | People I Manage                                           |
 | `/admin/*`          | Admin overview, users, plans, edit requests, review cycle |

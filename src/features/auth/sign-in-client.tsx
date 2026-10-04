@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OtpInput } from "@/components/ui/otp-input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { useToast } from "@/components/ui/toast";
 import { apiFetch, type PublicUser } from "@/lib/api/client";
 
 function dashboardFor(user: PublicUser, next: string | null): string {
@@ -22,6 +24,7 @@ export function SignInClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"password" | "otp">("password");
@@ -35,7 +38,11 @@ export function SignInClient() {
         json: { email, password },
       }),
     onSuccess: (data) => {
+      toast.success("Signed in", `Welcome back, ${data.user.fullName.split(" ")[0]}.`);
       router.push(dashboardFor(data.user, next));
+    },
+    onError: (error) => {
+      toast.error("Sign in failed", error.message);
     },
   });
 
@@ -54,6 +61,10 @@ export function SignInClient() {
       if (data.devCode) {
         setCode(data.devCode);
       }
+      toast.success("Code sent", "Check your inbox for a 6-digit code.");
+    },
+    onError: (error) => {
+      toast.error("Could not send code", error.message);
     },
   });
 
@@ -64,9 +75,15 @@ export function SignInClient() {
         json: { email, purpose: "LOGIN", code },
       }),
     onSuccess: (data) => {
+      toast.success("Signed in", `Welcome back, ${data.user.fullName.split(" ")[0]}.`);
       router.push(dashboardFor(data.user, next));
     },
+    onError: (error) => {
+      toast.error("Verification failed", error.message);
+    },
   });
+
+  const submitting = passwordLogin.isPending || verifyOtp.isPending || requestOtp.isPending;
 
   return (
     <AuthShell
@@ -74,9 +91,13 @@ export function SignInClient() {
       description="Maximising quantifiable social impact, one plan at a time."
       footer="Accounts are created by invitation only."
     >
-      <h2 className="text-2xl font-extrabold text-navy">Sign in to Impact Plan</h2>
+      <p className="text-xs font-semibold tracking-[0.18em] text-accent">SIGN IN</p>
+      <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-navy">
+        Sign in to Impact Plan
+      </h2>
+      <p className="mt-1.5 text-sm text-muted">Use your work email and preferred sign-in method.</p>
       <form
-        className="mt-8 space-y-4"
+        className="mt-8 space-y-5"
         onSubmit={(event) => {
           event.preventDefault();
           if (mode === "otp") {
@@ -94,6 +115,7 @@ export function SignInClient() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            placeholder="you@dev-afrique.com"
           />
         </div>
         {mode === "password" ? (
@@ -102,18 +124,21 @@ export function SignInClient() {
               <Label htmlFor="password" className="mb-0">
                 Password
               </Label>
-              <Link href="/forgot-password" className="text-sm font-semibold text-accent">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-semibold text-accent transition-colors hover:text-navy"
+              >
                 Forgot password?
               </Link>
             </div>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
+              placeholder="Enter your password"
             />
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1.5 text-xs text-muted">
               Shown only for people who chose a password at activation.
             </p>
           </div>
@@ -126,12 +151,18 @@ export function SignInClient() {
             ) : null}
           </div>
         )}
-        <Button type="submit" size="full">
+        <Button
+          type="submit"
+          size="full"
+          loading={mode === "otp" ? verifyOtp.isPending : passwordLogin.isPending}
+          loadingText={mode === "otp" ? "Verifying…" : "Signing in…"}
+          disabled={!email || (mode === "password" ? !password : code.length !== 6)}
+        >
           {mode === "otp" ? "Verify and continue" : "Sign in"}
         </Button>
-        <div className="relative py-2 text-center text-xs text-muted">
-          <span className="bg-white px-2">or</span>
-          <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-border" />
+        <div className="relative py-1 text-center text-xs text-muted">
+          <span className="relative z-10 bg-white px-3">or</span>
+          <div className="absolute inset-x-0 top-1/2 -z-0 h-px bg-border" />
         </div>
         {mode === "password" ? (
           <Button
@@ -139,19 +170,22 @@ export function SignInClient() {
             variant="secondary"
             size="full"
             onClick={() => requestOtp.mutate()}
-            disabled={!email || requestOtp.isPending}
+            loading={requestOtp.isPending}
+            loadingText="Sending code…"
+            disabled={!email || submitting}
           >
             Email me a one-time code
           </Button>
         ) : (
-          <Button type="button" variant="secondary" size="full" onClick={() => setMode("password")}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="full"
+            onClick={() => setMode("password")}
+            disabled={submitting}
+          >
             Use password instead
           </Button>
-        )}
-        {(passwordLogin.isError || verifyOtp.isError || requestOtp.isError) && (
-          <p className="text-sm text-danger">
-            {(passwordLogin.error || verifyOtp.error || requestOtp.error)?.message}
-          </p>
         )}
       </form>
     </AuthShell>

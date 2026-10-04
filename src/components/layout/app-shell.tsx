@@ -59,13 +59,13 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
   }, [menuOpen]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 sm:gap-8 sm:px-6">
-          <Link href="/app/plan" className="text-lg font-extrabold text-navy">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7f9fc_0%,#eef3f9_100%)]">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3.5 sm:gap-8 sm:px-6">
+          <Link href="/app/plan" className="text-lg font-extrabold tracking-tight text-navy">
             Dev-Afrique
           </Link>
-          <nav className="hidden flex-1 items-center gap-6 md:flex" aria-label="Primary">
+          <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label="Primary">
             {staffNav.map((item) => {
               const isActive = item.key === active;
               const badge =
@@ -79,9 +79,8 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative pb-1 text-sm font-semibold text-muted hover:text-navy",
-                    isActive &&
-                      "text-navy after:absolute after:inset-x-0 after:-bottom-4 after:h-0.5 after:bg-accent",
+                    "relative rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-accent-soft hover:text-navy",
+                    isActive && "bg-accent-soft text-navy",
                   )}
                 >
                   {item.label}
@@ -99,14 +98,14 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
               {year} cycle
             </Badge>
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-xs font-bold text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-xs font-bold text-white shadow-sm shadow-navy/20"
               aria-label={userName}
             >
               {initials(userName)}
             </div>
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border text-navy md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border text-navy md:hidden"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
@@ -126,7 +125,7 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
             onClick={() => setMenuOpen(false)}
           />
           <nav
-            className="absolute inset-x-0 top-18 mx-4 rounded-xl border border-border bg-white p-3 shadow-lg"
+            className="absolute inset-x-0 top-[4.25rem] mx-4 rounded-2xl border border-border bg-white p-2 shadow-xl shadow-navy/15"
             aria-label="Primary"
           >
             {staffNav.map((item) => {
@@ -143,7 +142,7 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
                   href={item.href}
                   onClick={() => setMenuOpen(false)}
                   className={cn(
-                    "flex items-center justify-between rounded-lg px-3 py-3 text-sm font-semibold text-muted hover:bg-accent-soft hover:text-navy",
+                    "flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-muted hover:bg-accent-soft hover:text-navy",
                     isActive && "bg-accent-soft text-navy",
                   )}
                 >

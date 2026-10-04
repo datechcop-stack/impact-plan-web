@@ -6,6 +6,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import { useState } from "react";
@@ -29,14 +30,17 @@ export function AdminPlansClient() {
 
   return (
     <AdminShell active="plans">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-navy">Impact plans</h1>
-          <p className="mt-1 text-sm text-muted">Create and manage staff plans for 2026.</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-accent">ADMIN</p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
+            Impact plans
+          </h1>
+          <p className="mt-1.5 text-sm text-muted">Create and manage staff plans for 2026.</p>
         </div>
         <Link
           href="/admin/plans/new"
-          className="inline-flex h-11 items-center rounded-lg bg-navy px-5 text-sm font-semibold text-white"
+          className="inline-flex h-11 items-center rounded-xl bg-navy px-5 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition-all hover:bg-navy-soft"
         >
           + New plan
         </Link>
@@ -48,7 +52,7 @@ export function AdminPlansClient() {
           onChange={(event) => setQ(event.target.value)}
         />
         {plansQuery.isLoading ? (
-          <StateView className="mt-4" state="loading" />
+          <TableSkeleton className="mt-4 border-0 p-0 shadow-none" rows={6} columns={4} />
         ) : plansQuery.isError ? (
           <StateView className="mt-4" state="error" />
         ) : !plansQuery.data?.items.length ? (

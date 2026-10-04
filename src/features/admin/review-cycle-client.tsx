@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeaderSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -76,10 +77,13 @@ export function ReviewCycleClient() {
 
   return (
     <AdminShell active="review-cycle">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-navy">Review cycle · {year}</h1>
-          <p className="mt-1 text-sm text-muted">
+          <p className="text-xs font-semibold tracking-[0.18em] text-accent">ADMIN</p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
+            Review cycle · {year}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted">
             When the review window opens, plans become open for self-assessment and staff are
             notified.
           </p>
@@ -90,7 +94,26 @@ export function ReviewCycleClient() {
       </div>
 
       {cycleQuery.isLoading ? (
-        <StateView className="mt-8" state="loading" />
+        <div className="mt-8 space-y-6" role="status" aria-label="Loading review cycle">
+          <PageHeaderSkeleton />
+          <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+            <div className="rounded-2xl border border-border/80 bg-white p-5 shadow-sm shadow-navy/5">
+              <Skeleton className="h-5 w-28" />
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <div key={index} className="space-y-2">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border/80 bg-white p-5 shadow-sm shadow-navy/5">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="mt-4 h-24 w-full" />
+            </div>
+          </div>
+        </div>
       ) : cycleQuery.isError ? (
         <StateView className="mt-8" state="error" />
       ) : (

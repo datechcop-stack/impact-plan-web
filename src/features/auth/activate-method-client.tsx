@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StateView } from "@/components/ui/state-view";
+import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ type InviteInfo = {
 
 export function ActivateMethodClient({ token }: { token: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [method, setMethod] = useState<"PASSWORD" | "OTP">("PASSWORD");
 
   const inviteQuery = useQuery({
@@ -37,7 +39,11 @@ export function ActivateMethodClient({ token }: { token: string }) {
         json: { token, method },
       }),
     onSuccess: () => {
+      toast.success("Method saved", "Continue to finish activating your account.");
       router.push(method === "PASSWORD" ? `/activate/${token}/password` : `/activate/${token}/otp`);
+    },
+    onError: (error) => {
+      toast.error("Could not continue", error.message);
     },
   });
 
@@ -69,7 +75,10 @@ export function ActivateMethodClient({ token }: { token: string }) {
       description="Plan your year across Projects, Business Development, Personal Development and Communities of Practice, then review it together at year end."
       footer="1 Invitation accepted · 2 Choose how you sign in · 3 Go to your dashboard"
     >
-      <h2 className="text-2xl font-extrabold text-navy">Welcome, {invite.firstName}</h2>
+      <p className="text-xs font-semibold tracking-[0.18em] text-accent">ACTIVATION</p>
+      <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-navy">
+        Welcome, {invite.firstName}
+      </h2>
       <p className="mt-2 text-sm text-muted">
         Choose how you&apos;d like to sign in to Impact Plan. You only do this once.
       </p>
@@ -82,8 +91,10 @@ export function ActivateMethodClient({ token }: { token: string }) {
           type="button"
           onClick={() => setMethod("PASSWORD")}
           className={cn(
-            "w-full rounded-xl border p-4 text-left",
-            method === "PASSWORD" ? "border-accent bg-accent-soft" : "border-border",
+            "w-full rounded-2xl border p-4 text-left transition-all",
+            method === "PASSWORD"
+              ? "border-accent bg-accent-soft shadow-sm shadow-accent/10"
+              : "border-border bg-white hover:border-navy/25",
           )}
         >
           <p className="font-bold text-navy">Set a password</p>
@@ -95,8 +106,10 @@ export function ActivateMethodClient({ token }: { token: string }) {
           type="button"
           onClick={() => setMethod("OTP")}
           className={cn(
-            "w-full rounded-xl border p-4 text-left",
-            method === "OTP" ? "border-accent bg-accent-soft" : "border-border",
+            "w-full rounded-2xl border p-4 text-left transition-all",
+            method === "OTP"
+              ? "border-accent bg-accent-soft shadow-sm shadow-accent/10"
+              : "border-border bg-white hover:border-navy/25",
           )}
         >
           <p className="font-bold text-navy">Email me a one-time code</p>
@@ -109,16 +122,14 @@ export function ActivateMethodClient({ token }: { token: string }) {
         className="mt-6"
         size="full"
         onClick={() => chooseMutation.mutate()}
-        disabled={chooseMutation.isPending}
+        loading={chooseMutation.isPending}
+        loadingText="Continuing…"
       >
         Continue
       </Button>
-      {chooseMutation.isError ? (
-        <p className="mt-3 text-sm text-danger">{(chooseMutation.error as Error).message}</p>
-      ) : null}
       <p className="mt-6 text-center text-xs text-muted">
         You can ask your administrator to switch methods later.{" "}
-        <Link href="/sign-in" className="text-accent">
+        <Link href="/sign-in" className="font-semibold text-accent">
           Sign in
         </Link>
       </p>

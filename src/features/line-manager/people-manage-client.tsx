@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ListPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { apiFetch } from "@/lib/api/client";
 import { cn, initials } from "@/lib/utils";
@@ -49,8 +50,11 @@ export function PeopleManageClient() {
     <AppShell active="people">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-navy">People I Manage</h1>
-          <p className="mt-1 text-sm text-muted">
+          <p className="text-xs font-semibold tracking-[0.18em] text-accent">LINE MANAGER</p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
+            People I Manage
+          </h1>
+          <p className="mt-1.5 text-sm text-muted">
             Your direct reports. Once every entry is PM Reviewed, add your overall comment and
             finalize the plan.
           </p>
@@ -81,7 +85,7 @@ export function PeopleManageClient() {
       </div>
 
       {peopleQuery.isLoading ? (
-        <StateView className="mt-8" state="loading" />
+        <ListPageSkeleton stats={0} />
       ) : peopleQuery.isError ? (
         <StateView className="mt-8" state="error" />
       ) : (
