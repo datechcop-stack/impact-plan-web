@@ -11,6 +11,7 @@ import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { EntryObjectivesView } from "@/features/plan/entry-objectives-view";
 import type { ObjectiveView } from "@/features/plan/objectives";
+import { UserPicker } from "@/components/ui/user-picker";
 import { apiFetch } from "@/lib/api/client";
 import {
   COMPONENT_META,
@@ -26,6 +27,7 @@ type AdminPlanDetail = {
   status: PlanStatus;
   finalScore: number | null;
   lineManagerComment: string | null;
+  recommendation: string | null;
   createdAt: string;
   lockedAt: string | null;
   submittedAt: string | null;
@@ -90,6 +92,17 @@ export function AdminPlanDetailClient() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+
+  const reassignManagerMutation = useMutation({
+    mutationFn: ({ entryId, managerId }: { entryId: string; managerId: string }) =>
+      apiFetch(`/admin/plans/${planId}/entries/${entryId}/manager`, {
+        method: "PATCH",
+        json: { managerId },
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
     },
   });
 
@@ -197,10 +210,24 @@ export function AdminPlanDetailClient() {
                             compact
                             objectives={entry.objectives}
                           />
-                          <p className="mt-2 text-xs text-muted">
-                            Manager: {entry.manager.fullName} · Due{" "}
-                            {new Date(entry.dueDate).toLocaleDateString()}
-                          </p>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                            <div>
+                              <p className="text-xs font-semibold text-muted">Project manager</p>
+                              <UserPicker
+                                className="mt-1"
+                                value={entry.manager.id}
+                                selectedLabel={entry.manager.fullName}
+                                excludeUserId={plan.owner.id}
+                                placeholder="Reassign manager…"
+                                onChange={(managerId) =>
+                                  reassignManagerMutation.mutate({ entryId: entry.id, managerId })
+                                }
+                              />
+                            </div>
+                            <p className="text-xs text-muted">
+                              Due {new Date(entry.dueDate).toLocaleDateString()}
+                            </p>
+                          </div>
                           {entry.selfAssessment ? (
                             <p className="mt-2 text-sm">
                               Self: {entry.selfAssessment.result} —{" "}
@@ -223,6 +250,28 @@ export function AdminPlanDetailClient() {
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardTitle>Leadership team snapshot</CardTitle>
+            <p className="mt-1 text-xs text-muted">
+              Use this block when presenting year-end results to LT.
+            </p>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase text-muted">Impact plan score</dt>
+                <dd className="mt-1 text-2xl font-extrabold text-navy">
+                  {plan.finalScore != null ? `${plan.finalScore}%` : "Not finalized"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase text-muted">Line manager comment</dt>
+                <dd className="mt-1 text-navy">{plan.lineManagerComment ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase text-muted">Recommendation</dt>
+                <dd className="mt-1 text-navy">{plan.recommendation ?? "—"}</dd>
+              </div>
+            </dl>
+          </Card>
           <Card>
             <CardTitle>Summary</CardTitle>
             <dl className="mt-3 space-y-2 text-sm">

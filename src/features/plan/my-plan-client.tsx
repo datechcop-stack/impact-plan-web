@@ -58,9 +58,16 @@ export function MyPlanClient() {
   >([]);
   const [removedEntryIds, setRemovedEntryIds] = useState<string[]>([]);
 
+  const [planYear, setPlanYear] = useState(2026);
+
+  const yearsQuery = useQuery({
+    queryKey: ["my-plan-years"],
+    queryFn: () => apiFetch<{ plans: Array<{ year: number; status: string }> }>("/me/plans/years"),
+  });
+
   const planQuery = useQuery({
-    queryKey: ["my-plan"],
-    queryFn: () => apiFetch<MyPlanResponse>("/me/plan?year=2026"),
+    queryKey: ["my-plan", planYear],
+    queryFn: () => apiFetch<MyPlanResponse>(`/me/plan?year=${planYear}`),
   });
 
   const saveAssessment = useMutation({
@@ -102,7 +109,11 @@ export function MyPlanClient() {
     [plan],
   );
   const assessedCount = allEntries.filter((e) => e.selfAssessment).length;
-  const pmDone = allEntries.filter((e) => e.pmReview?.status === "REVIEWED").length;
+  const pmDone = allEntries.filter((e) => {
+    if (!e.pmReview || e.pmReview.status !== "REVIEWED") return false;
+    if (plan?.status === "LOCKED") return true;
+    return e.pmReview.score != null;
+  }).length;
 
   function startAssessment(entry: PlanEntry) {
     setActiveEntryId(entry.id);
@@ -182,14 +193,54 @@ export function MyPlanClient() {
     );
   }
 
-  const isSelfAssessment = plan.status === "REVIEW_OPEN";
+  const isSelfAssessment =
+    plan.status === "REVIEW_OPEN" && planQuery.data?.reviewCycle?.purpose !== "MIDYEAR_PLAN_UPDATE";
   const isInReview = plan.status === "IN_REVIEW" || plan.status === "FINALIZED";
+  const isViewOnlyArchive = plan.status === "FINALIZED" || plan.year < 2026;
+  const midyearUpdateOpen =
+    plan.status === "UNLOCKED" &&
+    plan.changeLogs.some((log) => log.action.includes("MIDYEAR_REVIEW_OPENED"));
+  const isGoalReview = plan.status === "LOCKED";
+  const showPmTracker =
+    isInReview || (isGoalReview && allEntries.length > 0 && pmDone < allEntries.length);
+  const isDraft = plan.status === "DRAFT";
 
   return (
     <AppShell active="plan" userName={plan.owner.fullName}>
+      {isDraft ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
+          <span>
+            This plan is still a draft. You can edit it freely until you lock it for the year.
+          </span>
+          <Link
+            href="/app/plan/edit"
+            className="inline-flex h-9 items-center rounded-lg bg-navy px-4 text-xs font-semibold text-white hover:bg-navy-soft"
+          >
+            Edit draft
+          </Link>
+        </div>
+      ) : null}
+      {midyearUpdateOpen ? (
+        <div className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
+          The mid-year review window is open. Update your plan entries below, then save and notify
+          your administrator when you are finished.
+        </div>
+      ) : null}
       {isEditing ? (
         <div className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
-          A component is unlocked for editing. Save changes & notify admin when you are done.
+          A component is unlocked for editing. Save changes & notify admin when you are done. You
+          cannot remove existing entries — only add or update them.
+        </div>
+      ) : null}
+      {isViewOnlyArchive ? (
+        <div className="mb-4 rounded-lg bg-muted/10 px-4 py-3 text-sm text-muted">
+          This plan is archived for {plan.year}. You can view it here but cannot make changes.
+        </div>
+      ) : null}
+      {isGoalReview && pmDone < allEntries.length ? (
+        <div className="mb-4 rounded-lg bg-warning-soft px-4 py-3 text-sm text-navy">
+          Your plan is locked. Each tagged manager must review your goals ({pmDone} of{" "}
+          {allEntries.length} reviewed) before the plan is fully set for the year.
         </div>
       ) : null}
       {isSelfAssessment ? (
@@ -220,7 +271,33 @@ export function MyPlanClient() {
             {plan.owner.jobTitle ? ` · ${plan.owner.jobTitle}` : ""}
             {plan.owner.lineManager ? ` · Line manager: ${plan.owner.lineManager.fullName}` : ""}
           </p>
+          {(yearsQuery.data?.plans.length ?? 0) > 1 ? (
+            <div className="mt-3">
+              <Label htmlFor="plan-year">Plan year</Label>
+              <select
+                id="plan-year"
+                className="mt-1 h-10 rounded-lg border border-border px-3 text-sm"
+                value={planYear}
+                onChange={(event) => setPlanYear(Number(event.target.value))}
+              >
+                {yearsQuery.data?.plans.map((item) => (
+                  <option key={item.year} value={item.year}>
+                    {item.year}
+                    {item.status === "FINALIZED" ? " · archived" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </div>
+        {isDraft ? (
+          <Link
+            href="/app/plan/edit"
+            className="inline-flex h-11 items-center rounded-xl bg-navy px-5 text-sm font-semibold text-white shadow-sm hover:bg-navy-soft"
+          >
+            Edit draft
+          </Link>
+        ) : null}
         {plan.status === "LOCKED" ? (
           <Button variant="secondary" onClick={() => setEditOpen(true)}>
             Request edit access
@@ -242,14 +319,15 @@ export function MyPlanClient() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="space-y-4">
-          {isInReview ? (
+          {showPmTracker ? (
             <Card>
-              <CardTitle>Review tracker</CardTitle>
+              <CardTitle>{isGoalReview ? "Manager goal review" : "Review tracker"}</CardTitle>
               <p className="mt-1 text-sm text-muted">
-                {plan.submittedAt
-                  ? `Submitted ${new Date(plan.submittedAt).toLocaleDateString()}. `
-                  : ""}
-                Your plan is read-only while managers review it.
+                {isGoalReview
+                  ? "Tagged managers review each entry's objectives after you lock the plan."
+                  : plan.submittedAt
+                    ? `Submitted ${new Date(plan.submittedAt).toLocaleDateString()}. Your plan is read-only while managers review it.`
+                    : "Your plan is read-only while managers review it."}
               </p>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -267,7 +345,9 @@ export function MyPlanClient() {
                       const component = plan.components.find((c) =>
                         c.entries.some((e) => e.id === entry.id),
                       );
-                      const reviewed = entry.pmReview?.status === "REVIEWED";
+                      const reviewed =
+                        entry.pmReview?.status === "REVIEWED" &&
+                        (isGoalReview || entry.pmReview.score != null);
                       return (
                         <tr key={entry.id} className="border-t border-border align-top">
                           <td className="py-3">
@@ -279,7 +359,11 @@ export function MyPlanClient() {
                           <td>{entry.manager.fullName}</td>
                           <td>
                             <Badge variant={reviewed ? "success" : "warning"}>
-                              {reviewed ? "PM Reviewed" : "Awaiting PM"}
+                              {reviewed
+                                ? isGoalReview && entry.pmReview?.score == null
+                                  ? "Goal reviewed"
+                                  : "PM Reviewed"
+                                : "Awaiting PM"}
                             </Badge>
                           </td>
                           <td>
@@ -294,11 +378,6 @@ export function MyPlanClient() {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-4 text-sm text-muted">
-                Line manager comment:{" "}
-                {plan.lineManagerComment ??
-                  `${plan.owner.lineManager?.fullName ?? "Your line manager"} adds this once every entry is PM Reviewed.`}
-              </p>
             </Card>
           ) : null}
 
@@ -401,7 +480,7 @@ export function MyPlanClient() {
               })
             : null}
 
-          {!isSelfAssessment && !isInReview
+          {!isSelfAssessment && !showPmTracker
             ? plan.components
                 .filter((c) => c.enabled)
                 .map((component) => {
@@ -421,8 +500,7 @@ export function MyPlanClient() {
                         </div>
                         <p className="text-sm text-muted">
                           {component.entries.length}{" "}
-                          {component.entries.length === 1 ? "entry" : "entries"} ·{" "}
-                          {component.weight}% weight
+                          {component.entries.length === 1 ? "entry" : "entries"}
                         </p>
                       </div>
                       {unlocked && isEditing ? (
@@ -440,6 +518,29 @@ export function MyPlanClient() {
                                   className="rounded-lg border border-border p-4"
                                 >
                                   <div className="grid gap-3 md:grid-cols-2">
+                                    <div>
+                                      <Label>Component</Label>
+                                      <select
+                                        className="h-11 w-full rounded-lg border border-border px-3 text-sm"
+                                        value={entry.componentType}
+                                        onChange={(event) => {
+                                          const next = [...editingEntries];
+                                          next[globalIndex] = {
+                                            ...entry,
+                                            componentType: event.target.value as ComponentType,
+                                          };
+                                          setEditingEntries(next);
+                                        }}
+                                      >
+                                        {plan.components
+                                          .filter((c) => c.enabled)
+                                          .map((c) => (
+                                            <option key={c.type} value={c.type}>
+                                              {COMPONENT_META[c.type].label}
+                                            </option>
+                                          ))}
+                                      </select>
+                                    </div>
                                     <div className="md:col-span-2">
                                       <Label>Entry title</Label>
                                       <Input
@@ -500,18 +601,17 @@ export function MyPlanClient() {
                                       />
                                     </div>
                                   </div>
-                                  {entry.id ? (
+                                  {!entry.id ? (
                                     <Button
                                       className="mt-3"
                                       variant="link"
-                                      onClick={() => {
-                                        setRemovedEntryIds((ids) => [...ids, entry.id!]);
+                                      onClick={() =>
                                         setEditingEntries((items) =>
                                           items.filter((_, i) => i !== globalIndex),
-                                        );
-                                      }}
+                                        )
+                                      }
                                     >
-                                      Remove
+                                      Remove unsaved entry
                                     </Button>
                                   ) : null}
                                 </div>
@@ -619,20 +719,20 @@ export function MyPlanClient() {
             </>
           ) : null}
 
-          {isInReview && planQuery.data?.score ? (
+          {isInReview ? (
             <Card>
               <CardTitle>Weighted score</CardTitle>
               <p className="mt-2 text-3xl font-extrabold text-navy">
-                {roundDisplay(planQuery.data.score.provisionalPoints)}
+                {roundDisplay(planQuery.data?.score?.provisionalPoints ?? 0)}
                 <span className="ml-2 text-base font-semibold text-muted">
-                  of {planQuery.data.score.scoredWeightTotal} points scored so far
+                  of {planQuery.data?.score?.scoredWeightTotal ?? 0} points scored so far
                 </span>
               </p>
               <p className="mt-2 text-xs text-muted">
                 Provisional. The final score out of 100% appears when all components are scored.
               </p>
               <ul className="mt-4 space-y-2 text-sm">
-                {planQuery.data.score.components.map((component) => (
+                {(planQuery.data?.score?.components ?? []).map((component) => (
                   <li key={component.type} className="flex justify-between gap-2">
                     <span>
                       {COMPONENT_META[component.type as ComponentType]?.shortLabel ??
@@ -646,38 +746,20 @@ export function MyPlanClient() {
                   </li>
                 ))}
               </ul>
+              <div className="mt-6 border-t border-border pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Line manager comment
+                </p>
+                <p className="mt-2 text-sm text-navy">
+                  {plan.lineManagerComment ??
+                    `${plan.owner.lineManager?.fullName ?? "Your line manager"} adds this once every entry is PM reviewed.`}
+                </p>
+              </div>
             </Card>
           ) : null}
 
-          {!isSelfAssessment && !isInReview ? (
+          {!isSelfAssessment && !showPmTracker ? (
             <>
-              <Card>
-                <CardTitle>Component weights</CardTitle>
-                <div className="mt-3 flex h-3 overflow-hidden rounded-full">
-                  {plan.components
-                    .filter((c) => c.enabled)
-                    .map((c) => (
-                      <div
-                        key={c.id}
-                        className={COMPONENT_META[c.type].colorClass}
-                        style={{ width: `${c.weight}%` }}
-                      />
-                    ))}
-                </div>
-                <ul className="mt-3 space-y-1 text-sm">
-                  {plan.components
-                    .filter((c) => c.enabled)
-                    .map((c) => (
-                      <li key={c.id} className="flex justify-between">
-                        <span>{COMPONENT_META[c.type].label}</span>
-                        <span>{c.weight}%</span>
-                      </li>
-                    ))}
-                </ul>
-                <p className="mt-3 text-xs text-muted">
-                  Weights are set by your administrator and always total 100%.
-                </p>
-              </Card>
               <Card>
                 <CardTitle>Plan details</CardTitle>
                 <dl className="mt-3 space-y-2 text-sm">
@@ -693,6 +775,21 @@ export function MyPlanClient() {
                   </div>
                 </dl>
               </Card>
+              {isDraft ? (
+                <Card>
+                  <CardTitle>Draft plan</CardTitle>
+                  <p className="mt-2 text-sm text-muted">
+                    Keep editing until you are ready, then lock the plan so managers can review your
+                    goals.
+                  </p>
+                  <Link
+                    href="/app/plan/edit"
+                    className="mt-3 inline-flex font-semibold text-accent"
+                  >
+                    Continue editing →
+                  </Link>
+                </Card>
+              ) : null}
               {plan.status === "LOCKED" ? (
                 <Card>
                   <CardTitle>Need to change something?</CardTitle>

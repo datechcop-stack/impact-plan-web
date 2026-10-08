@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextarea } from "@/components/ui/rich-textarea";
 import { emptyObjective, type ObjectiveDraft } from "@/features/plan/objectives";
 
 type EntryObjectivesEditorProps = {
@@ -48,14 +48,14 @@ export function EntryObjectivesEditor({ value, onChange }: EntryObjectivesEditor
               </Button>
             ) : null}
           </div>
-          <Textarea
+          <RichTextarea
             id={`objective-${objectiveIndex}`}
             className="mt-1.5"
             value={objective.text}
             placeholder="What should be achieved?"
-            onChange={(event) => {
+            onChange={(text) => {
               const next = [...value];
-              next[objectiveIndex] = { ...objective, text: event.target.value };
+              next[objectiveIndex] = { ...objective, text };
               onChange(next);
             }}
           />
@@ -107,14 +107,14 @@ export function EntryObjectivesEditor({ value, onChange }: EntryObjectivesEditor
                     </Button>
                   ) : null}
                 </div>
-                <Textarea
+                <RichTextarea
                   id={`criterion-${objectiveIndex}-${criterionIndex}`}
                   value={criterion.text}
                   placeholder="How will success be measured?"
-                  onChange={(event) => {
+                  onChange={(text) => {
                     const next = [...value];
                     const criteria = [...objective.successCriteria];
-                    criteria[criterionIndex] = { text: event.target.value };
+                    criteria[criterionIndex] = { text };
                     next[objectiveIndex] = { ...objective, successCriteria: criteria };
                     onChange(next);
                   }}

@@ -1,15 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
+import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api/client";
 import { useState } from "react";
+
+const PLAN_YEAR = 2026;
 
 type PlanItem = {
   id: string;
@@ -19,7 +23,25 @@ type PlanItem = {
 };
 
 export function AdminPlansClient() {
+  const toast = useToast();
   const [q, setQ] = useState("");
+  const exportMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<{ filename: string; csv: string }>(`/admin/plans/export?year=${PLAN_YEAR}`),
+    onSuccess: (data) => {
+      const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = data.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Export ready", `Downloaded ${data.filename}`);
+    },
+    onError: (error) => {
+      toast.error("Export failed", error.message);
+    },
+  });
   const plansQuery = useQuery({
     queryKey: ["admin-plans", q],
     queryFn: () =>
@@ -38,12 +60,23 @@ export function AdminPlansClient() {
           </h1>
           <p className="mt-1.5 text-sm text-muted">Create and manage staff plans for 2026.</p>
         </div>
-        <Link
-          href="/admin/plans/new"
-          className="inline-flex h-11 items-center rounded-xl bg-navy px-5 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition-all hover:bg-navy-soft"
-        >
-          + New plan
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            disabled={exportMutation.isPending}
+            loading={exportMutation.isPending}
+            loadingText="Exporting…"
+            onClick={() => exportMutation.mutate()}
+          >
+            Download Excel (CSV)
+          </Button>
+          <Link
+            href="/admin/plans/new"
+            className="inline-flex h-11 items-center rounded-xl bg-navy px-5 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition-all hover:bg-navy-soft"
+          >
+            + New plan
+          </Link>
+        </div>
       </div>
       <Card className="mt-6">
         <Input

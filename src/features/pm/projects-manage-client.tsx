@@ -48,7 +48,7 @@ export function ProjectsManageClient() {
     <AppShell active="projects">
       <p className="text-xs font-semibold tracking-[0.18em] text-accent">MANAGER</p>
       <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
-        Projects I Manage
+        Projects You Manage
       </h1>
       <p className="mt-1.5 text-sm text-muted">
         Entries across all components where you&apos;re tagged as the Manager.
@@ -64,8 +64,8 @@ export function ProjectsManageClient() {
             {(
               [
                 ["Tagged entries", listQuery.data!.stats.tagged, false],
-                ["Awaiting your score", listQuery.data!.stats.awaiting, true],
-                ["Owner hasn't submitted", listQuery.data!.stats.notSubmitted, false],
+                ["Awaiting your review", listQuery.data!.stats.awaiting, true],
+                ["Not ready for review", listQuery.data!.stats.notSubmitted, false],
                 ["PM Reviewed", listQuery.data!.stats.reviewed, false],
               ] as const
             ).map(([label, value, highlight]) => (
@@ -120,8 +120,8 @@ export function ProjectsManageClient() {
               onChange={(event) => setStatus(event.target.value)}
             >
               <option value="ALL">All statuses</option>
-              <option value="AWAITING">Awaiting score</option>
-              <option value="NOT_SUBMITTED">Owner hasn&apos;t submitted</option>
+              <option value="AWAITING">Awaiting review</option>
+              <option value="NOT_SUBMITTED">Not ready for review</option>
               <option value="REVIEWED">PM Reviewed</option>
             </select>
           </div>
@@ -148,7 +148,7 @@ export function ProjectsManageClient() {
                       </div>
                     </div>
                     {group.notSubmitted ? (
-                      <Badge variant="muted">Self-assessment not submitted</Badge>
+                      <Badge variant="muted">Plan not locked yet</Badge>
                     ) : (
                       <p className="text-sm text-muted">
                         {group.awaiting} awaiting · {group.reviewed} reviewed
@@ -179,10 +179,12 @@ export function ProjectsManageClient() {
                               }
                             >
                               {entry.status === "REVIEWED"
-                                ? `PM Reviewed · ${entry.score}%`
+                                ? entry.score != null
+                                  ? `PM Reviewed · ${entry.score}%`
+                                  : "Goal reviewed"
                                 : entry.status === "AWAITING"
-                                  ? "Awaiting score"
-                                  : "Not submitted"}
+                                  ? "Awaiting review"
+                                  : "Not ready"}
                             </Badge>
                             {entry.status === "AWAITING" ? (
                               <Link

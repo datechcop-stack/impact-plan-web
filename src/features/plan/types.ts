@@ -42,6 +42,7 @@ export type MyPlanResponse = {
       | "FINALIZED";
     submittedAt: string | null;
     lineManagerComment: string | null;
+    recommendation: string | null;
     createdAt: string;
     owner: {
       id: string;
@@ -61,6 +62,7 @@ export type MyPlanResponse = {
   reviewCycle: {
     windowOpens: string;
     selfAssessmentDeadline: string;
+    purpose?: "MIDYEAR_PLAN_UPDATE" | "YEAR_END_REVIEW";
   } | null;
   score: {
     components: Array<{

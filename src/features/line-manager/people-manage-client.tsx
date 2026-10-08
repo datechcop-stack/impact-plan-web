@@ -52,7 +52,7 @@ export function PeopleManageClient() {
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-accent">LINE MANAGER</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
-            People I Manage
+            People You Manage
           </h1>
           <p className="mt-1.5 text-sm text-muted">
             Your direct reports. Once every entry is PM Reviewed, add your overall comment and

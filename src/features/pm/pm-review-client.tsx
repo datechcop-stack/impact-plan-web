@@ -28,6 +28,7 @@ type EntryResponse = {
     componentType: ComponentType;
     weight: number;
     owner: { id: string; fullName: string; jobTitle: string | null };
+    planStatus: string;
     submittedAt: string | null;
     selfAssessment: {
       result: "ACHIEVED" | "PARTLY" | "NOT";
@@ -75,11 +76,13 @@ export function PmReviewClient() {
   const band = useMemo(() => scoreBand(score), [score]);
 
   const saveDraft = useMutation({
-    mutationFn: () =>
-      apiFetch(`/pm/entries/${entryId}/review`, {
+    mutationFn: () => {
+      const goalPhase = entryQuery.data?.entry.planStatus === "LOCKED";
+      return apiFetch(`/pm/entries/${entryId}/review`, {
         method: "PUT",
-        json: { score, comment },
-      }),
+        json: goalPhase ? { comment } : { score, comment },
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["pm-entries"] });
       router.push("/app/projects");
@@ -87,11 +90,13 @@ export function PmReviewClient() {
   });
 
   const markReviewed = useMutation({
-    mutationFn: () =>
-      apiFetch<EntryResponse>(`/pm/entries/${entryId}/mark-reviewed`, {
+    mutationFn: () => {
+      const goalPhase = entryQuery.data?.entry.planStatus === "LOCKED";
+      return apiFetch<EntryResponse>(`/pm/entries/${entryId}/mark-reviewed`, {
         method: "POST",
-        json: { score, comment },
-      }),
+        json: goalPhase ? { comment } : { score, comment },
+      });
+    },
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["pm-entries"] });
       const nextId = data.queue.awaitingIds.find((id) => id !== entryId);
@@ -121,14 +126,16 @@ export function PmReviewClient() {
 
   const { entry, queue } = entryQuery.data;
   const meta = COMPONENT_META[entry.componentType];
-  const readOnly = entry.pmReview?.status === "REVIEWED";
+  const goalReviewPhase = entry.planStatus === "LOCKED";
+  const readOnly =
+    entry.pmReview?.status === "REVIEWED" && (goalReviewPhase || entry.pmReview.score != null);
 
   return (
     <AppShell active="projects" userName="PM">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           <Link href="/app/projects" className="text-accent">
-            Projects I Manage
+            Projects You Manage
           </Link>{" "}
           / {entry.owner.fullName} / <span className="text-navy font-semibold">{entry.title}</span>
         </p>
@@ -181,55 +188,63 @@ export function PmReviewClient() {
         </Card>
 
         <Card>
-          <CardTitle>Your review</CardTitle>
-          <div className="mt-4">
-            <Label htmlFor="score">Score (0–100%)</Label>
-            <div className="mt-1 flex items-center gap-3">
-              <Input
-                id="score"
-                type="number"
+          <CardTitle>{goalReviewPhase ? "Goal review" : "Your review"}</CardTitle>
+          {goalReviewPhase ? (
+            <p className="mt-2 text-sm text-muted">
+              Review this entry&apos;s objectives before the plan is set for the year. Scoring
+              happens after the owner submits their year-end self-assessment.
+            </p>
+          ) : null}
+          {!goalReviewPhase ? (
+            <div className="mt-4">
+              <Label htmlFor="score">Score (0–100%)</Label>
+              <div className="mt-1 flex items-center gap-3">
+                <Input
+                  id="score"
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="w-24"
+                  value={score}
+                  disabled={readOnly}
+                  onChange={(event) => setScore(Number(event.target.value))}
+                />
+                <span className="text-sm font-semibold text-navy">{band}</span>
+              </div>
+              <input
+                type="range"
                 min={0}
                 max={100}
-                className="w-24"
                 value={score}
                 disabled={readOnly}
                 onChange={(event) => setScore(Number(event.target.value))}
+                className="mt-3 w-full accent-[var(--accent)]"
               />
-              <span className="text-sm font-semibold text-navy">{band}</span>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                {(
+                  [
+                    { label: "0–49%", sub: "Not met", active: score <= 49 },
+                    { label: "50–79%", sub: "Partly met", active: score >= 50 && score <= 79 },
+                    { label: "80–100%", sub: "Met / exceeded", active: score >= 80 },
+                  ] as const
+                ).map((bandItem) => (
+                  <div
+                    key={bandItem.label}
+                    className={cn(
+                      "rounded-lg border px-2 py-2",
+                      bandItem.active
+                        ? "border-accent bg-accent-soft"
+                        : "border-border bg-background",
+                    )}
+                  >
+                    <p className="font-semibold text-navy">{bandItem.label}</p>
+                    <p className="text-muted">{bandItem.sub}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={score}
-              disabled={readOnly}
-              onChange={(event) => setScore(Number(event.target.value))}
-              className="mt-3 w-full accent-[var(--accent)]"
-            />
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-              {(
-                [
-                  { label: "0–49%", sub: "Not met", active: score <= 49 },
-                  { label: "50–79%", sub: "Partly met", active: score >= 50 && score <= 79 },
-                  { label: "80–100%", sub: "Met / exceeded", active: score >= 80 },
-                ] as const
-              ).map((bandItem) => (
-                <div
-                  key={bandItem.label}
-                  className={cn(
-                    "rounded-lg border px-2 py-2",
-                    bandItem.active
-                      ? "border-accent bg-accent-soft"
-                      : "border-border bg-background",
-                  )}
-                >
-                  <p className="font-semibold text-navy">{bandItem.label}</p>
-                  <p className="text-muted">{bandItem.sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-4">
+          ) : null}
+          <div className={goalReviewPhase ? "mt-4" : "mt-4"}>
             <Label htmlFor="comment">PM comment</Label>
             <Textarea
               id="comment"
@@ -249,7 +264,7 @@ export function PmReviewClient() {
                 disabled={!comment.trim() || markReviewed.isPending}
                 onClick={() => markReviewed.mutate()}
               >
-                Mark PM Reviewed & next entry
+                {goalReviewPhase ? "Mark goal reviewed & next" : "Mark PM Reviewed & next entry"}
               </Button>
               <Button
                 variant="link"

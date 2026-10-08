@@ -71,10 +71,10 @@ test.describe("review chain", () => {
   }) => {
     await uiLogin(page, "t.bello@devafrique.com", "StaffPass1!");
     await page.goto("/app/projects");
-    await expect(page.getByRole("heading", { name: /Projects I Manage/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Projects You Manage/i })).toBeVisible();
 
     await page.goto("/app/people");
-    await expect(page.getByRole("heading", { name: /People I Manage/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /People You Manage/i })).toBeVisible();
     await expect(page.getByText(/Amaka Obi/i).first()).toBeVisible({ timeout: 10_000 });
     await page
       .getByRole("link", { name: /Review & finalize|View plan|View/i })

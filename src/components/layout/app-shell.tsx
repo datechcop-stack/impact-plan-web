@@ -9,6 +9,7 @@ import { Menu, X } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api/client";
+import { signOut } from "@/lib/auth/sign-out";
 
 type NavCounts = {
   projectsAwaiting: number;
@@ -18,8 +19,8 @@ type NavCounts = {
 
 const staffNav = [
   { href: "/app/plan", label: "My Impact Plan", key: "plan" as const },
-  { href: "/app/projects", label: "Projects I Manage", key: "projects" as const },
-  { href: "/app/people", label: "People I Manage", key: "people" as const },
+  { href: "/app/projects", label: "Projects You Manage", key: "projects" as const },
+  { href: "/app/people", label: "People You Manage", key: "people" as const },
 ];
 
 type AppShellProps = {
@@ -103,6 +104,13 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
             >
               {initials(userName)}
             </div>
+            <button
+              type="button"
+              className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:bg-accent-soft hover:text-navy sm:inline-flex"
+              onClick={() => void signOut()}
+            >
+              Sign out
+            </button>
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border text-navy md:hidden"

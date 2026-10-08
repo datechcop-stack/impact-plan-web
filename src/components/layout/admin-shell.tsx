@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api/client";
+import { signOut } from "@/lib/auth/sign-out";
 
 type NavCounts = {
   projectsAwaiting: number;
@@ -109,13 +110,16 @@ function AdminNav({
           );
         })}
       </nav>
-      <Link
-        href="/sign-in"
-        onClick={onNavigate}
-        className="rounded-xl px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.();
+          void signOut();
+        }}
+        className="rounded-xl px-3 py-2 text-left text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
       >
         Sign out
-      </Link>
+      </button>
     </>
   );
 }

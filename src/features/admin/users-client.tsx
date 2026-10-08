@@ -37,6 +37,8 @@ export function AdminUsersClient() {
   const [role, setRole] = useState<"STAFF" | "ADMIN">("STAFF");
   const [remindCreatePlan, setRemindCreatePlan] = useState(true);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [editingLineManagerId, setEditingLineManagerId] = useState<string | null>(null);
+  const [lineManagerDraft, setLineManagerDraft] = useState("");
 
   const meQuery = useQuery({
     queryKey: ["auth-me"],
@@ -84,6 +86,23 @@ export function AdminUsersClient() {
     },
     onError: (error) => {
       toast.error("Resend failed", error.message);
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, lineManagerId }: { id: string; lineManagerId: string | null }) =>
+      apiFetch(`/admin/users/${id}`, {
+        method: "PATCH",
+        json: { lineManagerId },
+      }),
+    onSuccess: async () => {
+      toast.success("Line manager updated");
+      setEditingLineManagerId(null);
+      setLineManagerDraft("");
+      await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (error) => {
+      toast.error("Update failed", error.message);
     },
   });
 
@@ -159,7 +178,60 @@ export function AdminUsersClient() {
                             <p className="font-semibold text-navy">{user.fullName}</p>
                             <p className="text-muted">{user.email}</p>
                           </td>
-                          <td>{user.lineManagerName ?? "—"}</td>
+                          <td>
+                            {editingLineManagerId === user.id ? (
+                              <div className="min-w-[220px] space-y-2">
+                                <UserPicker
+                                  value={lineManagerDraft}
+                                  onChange={setLineManagerDraft}
+                                  placeholder="Choose line manager…"
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    loading={
+                                      updateUserMutation.isPending &&
+                                      updateUserMutation.variables?.id === user.id
+                                    }
+                                    onClick={() =>
+                                      updateUserMutation.mutate({
+                                        id: user.id,
+                                        lineManagerId: lineManagerDraft || null,
+                                      })
+                                    }
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingLineManagerId(null);
+                                      setLineManagerDraft("");
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span>{user.lineManagerName ?? "—"}</span>
+                                {user.status !== "DISABLED" ? (
+                                  <Button
+                                    variant="link"
+                                    className="text-xs"
+                                    onClick={() => {
+                                      setEditingLineManagerId(user.id);
+                                      setLineManagerDraft("");
+                                    }}
+                                  >
+                                    Change
+                                  </Button>
+                                ) : null}
+                              </div>
+                            )}
+                          </td>
                           <td>
                             {user.authMethod === "PASSWORD"
                               ? "Password"

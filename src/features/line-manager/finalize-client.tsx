@@ -35,6 +35,7 @@ type PersonPlanResponse = {
     status: PlanStatus;
     submittedAt: string | null;
     lineManagerComment: string | null;
+    recommendation: string | null;
     owner: { id: string; fullName: string; jobTitle: string | null };
     components: Array<{
       type: ComponentType;
@@ -80,6 +81,7 @@ export function FinalizeClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
+  const [recommendation, setRecommendation] = useState("");
 
   const planQuery = useQuery({
     queryKey: ["lm-plan", params.userId],
@@ -90,13 +92,16 @@ export function FinalizeClient() {
     if (planQuery.data?.plan.lineManagerComment) {
       setComment(planQuery.data.plan.lineManagerComment);
     }
+    if (planQuery.data?.plan.recommendation) {
+      setRecommendation(planQuery.data.plan.recommendation);
+    }
   }, [planQuery.data]);
 
   const finalizeMutation = useMutation({
     mutationFn: () =>
       apiFetch(`/lm/people/${params.userId}/plan/finalize`, {
         method: "POST",
-        json: { comment },
+        json: { comment, recommendation: recommendation.trim() || undefined },
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["lm-people"] });
@@ -130,7 +135,7 @@ export function FinalizeClient() {
   return (
     <AppShell active="people" userName="LM">
       <Link href="/app/people" className="text-sm font-semibold text-accent">
-        ← People I Manage
+        ← People You Manage
       </Link>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-sm font-bold text-navy">
@@ -262,6 +267,20 @@ export function FinalizeClient() {
               value={comment}
               disabled={plan.status === "FINALIZED"}
               onChange={(event) => setComment(event.target.value)}
+            />
+            <Label
+              htmlFor="lm-recommendation"
+              className="mt-4 block text-sm font-semibold text-navy"
+            >
+              Recommendation (optional)
+            </Label>
+            <textarea
+              id="lm-recommendation"
+              className="mt-2 min-h-24 w-full rounded-lg border border-border px-3 py-2 text-sm"
+              value={recommendation}
+              disabled={plan.status === "FINALIZED"}
+              placeholder="Promotion, development focus, or other LT recommendation"
+              onChange={(event) => setRecommendation(event.target.value)}
             />
             <ul className="mt-4 space-y-2 text-sm">
               <li className={checklist.selfAssessmentSubmitted ? "text-success" : "text-muted"}>
