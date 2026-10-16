@@ -124,15 +124,26 @@ export function MyPlanClient() {
 
   const isEditing =
     planQuery.data?.plan?.status === "PARTLY_UNLOCKED" ||
-    planQuery.data?.plan?.status === "UNLOCKED";
+    planQuery.data?.plan?.status === "UNLOCKED" ||
+    planQuery.data?.plan?.status === "REVIEW_OPEN";
 
   useEffect(() => {
     const current = planQuery.data?.plan;
     if (!current) return;
-    if (current.status !== "PARTLY_UNLOCKED" && current.status !== "UNLOCKED") return;
+    if (
+      current.status !== "PARTLY_UNLOCKED" &&
+      current.status !== "UNLOCKED" &&
+      current.status !== "REVIEW_OPEN"
+    ) {
+      return;
+    }
     if (editingEntries.length > 0) return;
     const unlocked = current.components.filter(
-      (c) => c.enabled && (current.status === "UNLOCKED" || c.lockState === "UNLOCKED"),
+      (c) =>
+        c.enabled &&
+        (current.status === "UNLOCKED" ||
+          current.status === "REVIEW_OPEN" ||
+          c.lockState === "UNLOCKED"),
     );
     setEditingEntries(
       unlocked.flatMap((component) =>
@@ -246,7 +257,8 @@ export function MyPlanClient() {
       {isSelfAssessment ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-success-soft px-4 py-3 text-sm text-success">
           <span>
-            The year-end review window is open. Add your result for every entry, then submit.
+            The year-end review window is open. Update your plan entries if needed, complete your
+            self-assessment for every entry, then submit.
           </span>
           {planQuery.data?.reviewCycle ? (
             <span>
@@ -482,11 +494,14 @@ export function MyPlanClient() {
               })
             : null}
 
-          {!isSelfAssessment && !showPmTracker
+          {isEditing || (!isSelfAssessment && !showPmTracker)
             ? plan.components
                 .filter((c) => c.enabled)
                 .map((component) => {
-                  const unlocked = plan.status === "UNLOCKED" || component.lockState === "UNLOCKED";
+                  const unlocked =
+                    plan.status === "UNLOCKED" ||
+                    plan.status === "REVIEW_OPEN" ||
+                    component.lockState === "UNLOCKED";
                   const meta = COMPONENT_META[component.type];
                   return (
                     <Card key={component.id}>
@@ -760,7 +775,7 @@ export function MyPlanClient() {
             </Card>
           ) : null}
 
-          {!isSelfAssessment && !showPmTracker ? (
+          {!showPmTracker && (!isSelfAssessment || isEditing) ? (
             <>
               <Card>
                 <CardTitle>Plan details</CardTitle>

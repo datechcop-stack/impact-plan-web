@@ -296,8 +296,11 @@ export function ReviewCycleClient() {
             <Card>
               <CardTitle>Year-end chain</CardTitle>
               <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm text-muted">
-                <li>Window opens. Mid-year unlocks plans; year-end opens self-assessment.</li>
-                <li>Staff update the plan or complete self-assessment, then submit.</li>
+                <li>
+                  Window opens. All locked plans unlock for editing. Year-end also opens
+                  self-assessment.
+                </li>
+                <li>Staff update entries (and self-assess at year-end), then submit.</li>
                 <li>Tagged PMs score each entry 0–100% with a comment.</li>
                 <li>Line managers add one overall comment and finalize.</li>
                 <li>Plans archived for {year}. Export from Impact plans for LT.</li>

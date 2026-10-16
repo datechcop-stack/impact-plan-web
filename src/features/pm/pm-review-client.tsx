@@ -90,11 +90,11 @@ export function PmReviewClient() {
   });
 
   const markReviewed = useMutation({
-    mutationFn: () => {
+    mutationFn: (decision?: "ACCEPT" | "REJECT") => {
       const goalPhase = entryQuery.data?.entry.planStatus === "LOCKED";
       return apiFetch<EntryResponse>(`/pm/entries/${entryId}/mark-reviewed`, {
         method: "POST",
-        json: goalPhase ? { comment } : { score, comment },
+        json: goalPhase ? { comment, decision: decision ?? "ACCEPT" } : { score, comment },
       });
     },
     onSuccess: async (data) => {
@@ -248,13 +248,20 @@ export function PmReviewClient() {
             </div>
           ) : null}
           <div className={goalReviewPhase ? "mt-4" : "mt-4"}>
-            <Label htmlFor="comment">PM comment</Label>
+            <Label htmlFor="comment">
+              {goalReviewPhase ? "Comment (required if rejecting)" : "PM comment"}
+            </Label>
             <Textarea
               id="comment"
               className="mt-1 h-28"
               value={comment}
               disabled={readOnly}
               onChange={(event) => setComment(event.target.value)}
+              placeholder={
+                goalReviewPhase
+                  ? "Optional for accept. Required if you reject these goals."
+                  : undefined
+              }
             />
             <p className="mt-1 text-xs text-muted">
               Visible to {entry.owner.fullName.split(" ")[0]} and their line manager.
@@ -262,13 +269,34 @@ export function PmReviewClient() {
           </div>
           {!readOnly ? (
             <div className="mt-4 space-y-2">
-              <Button
-                size="full"
-                disabled={!comment.trim() || markReviewed.isPending}
-                onClick={() => markReviewed.mutate()}
-              >
-                {goalReviewPhase ? "Mark goal reviewed & next" : "Mark PM Reviewed & next entry"}
-              </Button>
+              {goalReviewPhase ? (
+                <>
+                  <Button
+                    size="full"
+                    disabled={markReviewed.isPending}
+                    loading={markReviewed.isPending}
+                    onClick={() => markReviewed.mutate("ACCEPT")}
+                  >
+                    Accept goals & next
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="full"
+                    disabled={!comment.trim() || markReviewed.isPending}
+                    onClick={() => markReviewed.mutate("REJECT")}
+                  >
+                    Reject goals & next
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="full"
+                  disabled={!comment.trim() || markReviewed.isPending}
+                  onClick={() => markReviewed.mutate()}
+                >
+                  Mark PM Reviewed & next entry
+                </Button>
+              )}
               <Button
                 variant="link"
                 className="w-full"
