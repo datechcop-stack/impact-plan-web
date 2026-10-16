@@ -128,7 +128,8 @@ export function PmReviewClient() {
   const meta = COMPONENT_META[entry.componentType];
   const goalReviewPhase = entry.planStatus === "LOCKED";
   const readOnly =
-    entry.pmReview?.status === "REVIEWED" && (goalReviewPhase || entry.pmReview.score != null);
+    entry.planStatus === "FINALIZED" ||
+    (entry.pmReview?.status === "REVIEWED" && (goalReviewPhase || entry.pmReview.score != null));
 
   return (
     <AppShell active="projects" userName="PM">

@@ -14,6 +14,7 @@ import { signOut } from "@/lib/auth/sign-out";
 type NavCounts = {
   projectsAwaiting: number;
   peopleCount: number;
+  peopleAttention: number;
   pendingEditRequests: number;
 };
 
@@ -73,7 +74,9 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
                 item.key === "projects"
                   ? counts?.projectsAwaiting
                   : item.key === "people"
-                    ? counts?.peopleCount
+                    ? counts && counts.peopleAttention > 0
+                      ? counts.peopleAttention
+                      : counts?.peopleCount
                     : undefined;
               return (
                 <Link
@@ -142,7 +145,9 @@ export function AppShell({ active, year = 2026, userName = "User", children }: A
                 item.key === "projects"
                   ? counts?.projectsAwaiting
                   : item.key === "people"
-                    ? counts?.peopleCount
+                    ? counts && counts.peopleAttention > 0
+                      ? counts.peopleAttention
+                      : counts?.peopleCount
                     : undefined;
               return (
                 <Link

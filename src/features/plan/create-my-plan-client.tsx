@@ -54,12 +54,19 @@ export function CreateMyPlanClient() {
           lock,
         },
       }),
-    onSuccess: async (_data, lock) => {
+    onSuccess: async (data, lock) => {
+      const yearEndOpen = (data as { status?: string }).status === "REVIEW_OPEN";
       toast.success(
-        lock ? "Plan created and locked" : "Draft saved",
-        lock
-          ? "Tagged managers can review your goals before the plan is set for the year."
-          : "Continue editing from My Impact Plan whenever you are ready.",
+        yearEndOpen
+          ? "Year-end self-assessment is open"
+          : lock
+            ? "Plan created and locked"
+            : "Draft saved",
+        yearEndOpen
+          ? "Complete a self-assessment for every entry, then submit for project manager scoring."
+          : lock
+            ? "Tagged managers can review your goals before the plan is set for the year."
+            : "Continue editing from My Impact Plan whenever you are ready.",
       );
       await queryClient.invalidateQueries({ queryKey: ["my-plan"] });
       router.push("/app/plan");

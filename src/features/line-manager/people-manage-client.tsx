@@ -19,17 +19,40 @@ type PeopleResponse = {
     inReview: number;
     finalized: number;
   };
+  reviewCycle: {
+    status: string;
+    purpose: "MIDYEAR_PLAN_UPDATE" | "YEAR_END_REVIEW";
+    finalizeDeadline: string;
+  } | null;
   yearEndProgress: { finalized: number; total: number };
   items: Array<{
     id: string;
     fullName: string;
     jobTitle: string | null;
     uiStatus: "DRAFT" | "LOCKED" | "IN_REVIEW" | "FINALIZED";
+    stage:
+      | "NONE"
+      | "DRAFT"
+      | "GOAL_REVIEW"
+      | "SELF_ASSESSMENT"
+      | "PM_SCORING"
+      | "READY_TO_FINALIZE"
+      | "FINALIZED";
     selfAssessment: string;
     pmReviews: { done: number; total: number; ready: boolean };
     weightedScore: number | null;
   }>;
 };
+
+const STAGE_LABEL = {
+  NONE: "No plan",
+  DRAFT: "Draft",
+  GOAL_REVIEW: "Goal review",
+  SELF_ASSESSMENT: "Self-assessment",
+  PM_SCORING: "PM scoring",
+  READY_TO_FINALIZE: "Ready to finalize",
+  FINALIZED: "Finalized",
+} as const;
 
 export function PeopleManageClient() {
   const [status, setStatus] = useState("ALL");
@@ -55,7 +78,7 @@ export function PeopleManageClient() {
             People You Manage
           </h1>
           <p className="mt-1.5 text-sm text-muted">
-            Your direct reports. Once every entry is PM Reviewed, add your overall comment and
+            Your direct reports. Once every entry is PM scored, add your overall comment and
             finalize the plan.
           </p>
         </div>
@@ -83,6 +106,15 @@ export function PeopleManageClient() {
           </div>
         ) : null}
       </div>
+
+      {peopleQuery.data?.reviewCycle?.purpose === "YEAR_END_REVIEW" &&
+      peopleQuery.data.reviewCycle.status === "OPEN" ? (
+        <div className="mt-4 rounded-lg bg-success-soft px-4 py-3 text-sm text-success">
+          Year-end final review is open. Finalize a plan after self-assessment is submitted and
+          every entry has a project manager score. Final review closes{" "}
+          {new Date(peopleQuery.data.reviewCycle.finalizeDeadline).toLocaleDateString()}.
+        </div>
+      ) : null}
 
       {peopleQuery.isLoading ? (
         <ListPageSkeleton stats={0} />
@@ -148,14 +180,14 @@ export function PeopleManageClient() {
                       <td>
                         <Badge
                           variant={
-                            person.uiStatus === "FINALIZED"
+                            person.stage === "FINALIZED" || person.stage === "READY_TO_FINALIZE"
                               ? "success"
-                              : person.uiStatus === "IN_REVIEW"
+                              : person.stage === "SELF_ASSESSMENT" || person.stage === "PM_SCORING"
                                 ? "warning"
                                 : "default"
                           }
                         >
-                          {person.uiStatus.replaceAll("_", " ")}
+                          {STAGE_LABEL[person.stage]}
                         </Badge>
                       </td>
                       <td>{person.selfAssessment}</td>
@@ -167,22 +199,24 @@ export function PeopleManageClient() {
                         >
                           {person.pmReviews.done} / {person.pmReviews.total}
                         </span>
-                        {person.pmReviews.ready
-                          ? " · ready for you"
-                          : person.uiStatus === "IN_REVIEW"
-                            ? " · waiting on PMs"
-                            : ""}
+                        {person.stage === "SELF_ASSESSMENT"
+                          ? " · after they submit"
+                          : person.pmReviews.ready
+                            ? " · ready for you"
+                            : person.stage === "PM_SCORING"
+                              ? " · waiting on scores"
+                              : ""}
                       </td>
                       <td>{person.weightedScore != null ? `${person.weightedScore}%` : "—"}</td>
                       <td className="px-4">
-                        {person.pmReviews.ready ? (
+                        {person.stage === "READY_TO_FINALIZE" ? (
                           <Link
                             href={`/app/people/${person.id}`}
                             className="inline-flex h-9 items-center rounded-lg bg-navy px-3 text-xs font-semibold text-white"
                           >
                             Review & finalize
                           </Link>
-                        ) : person.uiStatus === "LOCKED" ? (
+                        ) : person.stage === "GOAL_REVIEW" ? (
                           <button
                             type="button"
                             className="text-sm font-semibold text-accent"

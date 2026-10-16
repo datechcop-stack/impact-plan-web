@@ -85,16 +85,27 @@ export function ReviewCycleClient() {
   });
 
   const openMutation = useMutation({
-    mutationFn: () =>
-      apiFetch<{ opened: number; purpose: string }>(`/admin/review-cycles/${year}/open-now`, {
+    mutationFn: async () => {
+      await apiFetch(`/admin/review-cycles/${year}`, { method: "PUT", json: form });
+      return apiFetch<{
+        opened: number;
+        alreadyOpen: number;
+        skipped: number;
+        purpose: string;
+      }>(`/admin/review-cycles/${year}/open-now`, {
         method: "POST",
         json: {},
-      }),
+      });
+    },
     onSuccess: async (data) => {
-      toast.success(
-        "Review window opened",
-        `${data.opened} plan(s) updated · ${data.purpose === "MIDYEAR_PLAN_UPDATE" ? "mid-year plan update" : "year-end self-assessment"}.`,
-      );
+      const yearEnd = data.purpose === "YEAR_END_REVIEW";
+      const detail =
+        data.opened === 0 && data.alreadyOpen === 0
+          ? "No eligible plans moved. Draft and finalized plans stay as they are until a plan is locked."
+          : yearEnd
+            ? `${data.opened} plan(s) opened for self-assessment. Project managers score after submission, then line managers finalize.${data.alreadyOpen ? ` ${data.alreadyOpen} already in review.` : ""}`
+            : `${data.opened} plan(s) opened for mid-year updates.${data.alreadyOpen ? ` ${data.alreadyOpen} already unlocked.` : ""}`;
+      toast.success(yearEnd ? "Year-end review opened" : "Mid-year window opened", detail);
       await queryClient.invalidateQueries({ queryKey: ["review-cycle"] });
     },
     onError: (error) => {
@@ -276,11 +287,13 @@ export function ReviewCycleClient() {
               <Button
                 variant="secondary"
                 onClick={() => openMutation.mutate()}
-                disabled={openMutation.isPending}
+                disabled={openMutation.isPending || saveMutation.isPending}
                 loading={openMutation.isPending}
                 loadingText="Opening…"
               >
-                Open window now
+                {form.purpose === "YEAR_END_REVIEW"
+                  ? "Open year-end review"
+                  : "Open mid-year update"}
               </Button>
               <Button
                 onClick={() => saveMutation.mutate()}
@@ -297,12 +310,14 @@ export function ReviewCycleClient() {
               <CardTitle>Year-end chain</CardTitle>
               <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm text-muted">
                 <li>
-                  Window opens. All locked plans unlock for editing. Year-end also opens
-                  self-assessment.
+                  Opening year-end moves every locked or unlocked plan into self-assessment and
+                  emails staff, tagged project managers, and line managers.
                 </li>
-                <li>Staff update entries (and self-assess at year-end), then submit.</li>
-                <li>Tagged PMs score each entry 0–100% with a comment.</li>
-                <li>Line managers add one overall comment and finalize.</li>
+                <li>
+                  Staff update entries, complete a self-assessment for every entry, then submit.
+                </li>
+                <li>Tagged project managers score each entry 0–100% with a comment.</li>
+                <li>Line managers add one overall comment and finalize once every score is in.</li>
                 <li>Plans archived for {year}. Export from Impact plans for LT.</li>
               </ol>
             </Card>

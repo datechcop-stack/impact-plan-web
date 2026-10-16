@@ -14,6 +14,11 @@ import { COMPONENT_META, type ComponentType } from "@/lib/plan";
 import { cn, initials } from "@/lib/utils";
 
 type PmListResponse = {
+  reviewCycle: {
+    status: string;
+    purpose: "MIDYEAR_PLAN_UPDATE" | "YEAR_END_REVIEW";
+    pmScoringDeadline: string;
+  } | null;
   stats: { tagged: number; awaiting: number; notSubmitted: number; reviewed: number };
   groups: Array<{
     owner: { id: string; fullName: string; jobTitle: string | null };
@@ -55,6 +60,14 @@ export function ProjectsManageClient() {
       <p className="mt-1.5 text-sm text-muted">
         Entries across all components where you&apos;re tagged as the Manager.
       </p>
+      {listQuery.data?.reviewCycle?.purpose === "YEAR_END_REVIEW" &&
+      listQuery.data.reviewCycle.status === "OPEN" ? (
+        <div className="mt-4 rounded-lg bg-success-soft px-4 py-3 text-sm text-success">
+          Year-end scoring is open. Entries appear here for a score after the owner submits their
+          self-assessment. Scoring closes{" "}
+          {new Date(listQuery.data.reviewCycle.pmScoringDeadline).toLocaleDateString()}.
+        </div>
+      ) : null}
 
       {listQuery.isLoading ? (
         <ListPageSkeleton />
@@ -143,15 +156,19 @@ export function ProjectsManageClient() {
                         <p className="font-bold text-navy">{group.owner.fullName}</p>
                         <p className="text-sm text-muted">
                           {group.owner.jobTitle ?? "Staff"}
-                          {group.submittedAt && group.planStatus === "IN_REVIEW"
-                            ? ` · Self-assessment submitted ${new Date(group.submittedAt).toLocaleDateString()}`
-                            : group.planStatus === "LOCKED"
-                              ? " · Goal review"
-                              : ""}
+                          {group.planStatus === "REVIEW_OPEN"
+                            ? " · Self-assessment in progress"
+                            : group.submittedAt && group.planStatus === "IN_REVIEW"
+                              ? ` · Self-assessment submitted ${new Date(group.submittedAt).toLocaleDateString()}`
+                              : group.planStatus === "LOCKED"
+                                ? " · Goal review"
+                                : ""}
                         </p>
                       </div>
                     </div>
-                    {group.notSubmitted ? (
+                    {group.planStatus === "REVIEW_OPEN" ? (
+                      <Badge variant="warning">Self-assessment in progress</Badge>
+                    ) : group.notSubmitted ? (
                       <Badge variant="muted">Plan not locked yet</Badge>
                     ) : (
                       <p className="text-sm text-muted">

@@ -105,10 +105,13 @@ export function EditMyPlanClient() {
       });
       return apiFetch("/me/plan/lock", { method: "POST", json: { year: YEAR } });
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      const yearEndOpen = (data as { status?: string }).status === "REVIEW_OPEN";
       toast.success(
-        "Plan locked",
-        "Tagged managers can now review your goals before the year-end review window opens.",
+        yearEndOpen ? "Year-end self-assessment is open" : "Plan locked",
+        yearEndOpen
+          ? "Complete a self-assessment for every entry, then submit for project manager scoring."
+          : "Tagged managers can now review your goals before the year-end review window opens.",
       );
       await queryClient.invalidateQueries({ queryKey: ["my-plan"] });
       router.push("/app/plan");

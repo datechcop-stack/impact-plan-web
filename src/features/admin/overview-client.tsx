@@ -23,6 +23,8 @@ type Overview = {
     staffWithoutPlan: number;
     pendingInvites: number;
     reviewWindowOpens: string | null;
+    reviewCycleStatus: "SCHEDULED" | "OPEN" | "CLOSED" | null;
+    reviewPurpose: "MIDYEAR_PLAN_UPDATE" | "YEAR_END_REVIEW" | null;
   };
   recentActivity: Array<{
     id: string;
@@ -122,10 +124,19 @@ export function AdminOverviewClient() {
                 </li>
                 <li className="flex items-center justify-between gap-3 rounded-xl bg-background/80 px-3 py-2.5">
                   <span>
-                    Review window opens {overviewQuery.data!.attention.reviewWindowOpens ?? "—"}
+                    {overviewQuery.data!.attention.reviewPurpose === "YEAR_END_REVIEW"
+                      ? "Year-end review"
+                      : overviewQuery.data!.attention.reviewPurpose === "MIDYEAR_PLAN_UPDATE"
+                        ? "Mid-year update"
+                        : "Review window"}{" "}
+                    {overviewQuery.data!.attention.reviewCycleStatus === "OPEN"
+                      ? "is open"
+                      : `opens ${overviewQuery.data!.attention.reviewWindowOpens ?? "—"}`}
                   </span>
                   <Link href="/admin/review-cycle" className="font-semibold text-accent">
-                    Settings →
+                    {overviewQuery.data!.attention.reviewCycleStatus === "OPEN"
+                      ? "Manage →"
+                      : "Open →"}
                   </Link>
                 </li>
               </ul>

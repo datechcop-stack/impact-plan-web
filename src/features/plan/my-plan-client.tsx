@@ -237,7 +237,7 @@ export function MyPlanClient() {
           your administrator when you are finished.
         </div>
       ) : null}
-      {isEditing ? (
+      {isEditing && !isSelfAssessment ? (
         <div className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
           A component is unlocked for editing. Save changes & notify admin when you are done. You
           cannot remove existing entries — only add or update them.
