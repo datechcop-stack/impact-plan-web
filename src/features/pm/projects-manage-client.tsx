@@ -21,11 +21,13 @@ type PmListResponse = {
     awaiting: number;
     reviewed: number;
     notSubmitted: boolean;
+    planStatus: string;
     entries: Array<{
       id: string;
       title: string;
       componentType: ComponentType;
       status: "AWAITING" | "NOT_SUBMITTED" | "REVIEWED";
+      reviewPhase: "GOAL" | "SCORING" | null;
       score: number | null;
     }>;
   }>;
@@ -141,9 +143,11 @@ export function ProjectsManageClient() {
                         <p className="font-bold text-navy">{group.owner.fullName}</p>
                         <p className="text-sm text-muted">
                           {group.owner.jobTitle ?? "Staff"}
-                          {group.submittedAt
-                            ? ` · submitted ${new Date(group.submittedAt).toLocaleDateString()}`
-                            : ""}
+                          {group.submittedAt && group.planStatus === "IN_REVIEW"
+                            ? ` · Self-assessment submitted ${new Date(group.submittedAt).toLocaleDateString()}`
+                            : group.planStatus === "LOCKED"
+                              ? " · Goal review"
+                              : ""}
                         </p>
                       </div>
                     </div>
@@ -183,7 +187,9 @@ export function ProjectsManageClient() {
                                   ? `PM Reviewed · ${entry.score}%`
                                   : "Goal reviewed"
                                 : entry.status === "AWAITING"
-                                  ? "Awaiting review"
+                                  ? entry.reviewPhase === "SCORING"
+                                    ? "Awaiting PM scoring"
+                                    : "Awaiting goal review"
                                   : "Not ready"}
                             </Badge>
                             {entry.status === "AWAITING" ? (

@@ -12,6 +12,11 @@ import { TwoColumnFormSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { useToast } from "@/components/ui/toast";
 import { UserPicker } from "@/components/ui/user-picker";
+import {
+  PlanComponentWeightsEditor,
+  PROGRAMME_COMPONENT_TEMPLATE,
+  type PlanComponentState,
+} from "@/features/plan/plan-component-weights-editor";
 import { apiFetch, type PublicUser } from "@/lib/api/client";
 
 type UserRow = {
@@ -36,6 +41,9 @@ export function AdminUsersClient() {
   const [lineManagerId, setLineManagerId] = useState("");
   const [role, setRole] = useState<"STAFF" | "ADMIN">("STAFF");
   const [remindCreatePlan, setRemindCreatePlan] = useState(true);
+  const [planComponents, setPlanComponents] = useState<PlanComponentState[]>(
+    PROGRAMME_COMPONENT_TEMPLATE,
+  );
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [editingLineManagerId, setEditingLineManagerId] = useState<string | null>(null);
   const [lineManagerDraft, setLineManagerDraft] = useState("");
@@ -62,6 +70,11 @@ export function AdminUsersClient() {
           lineManagerId: lineManagerId || null,
           role,
           remindCreatePlan,
+          planComponents: planComponents.map(({ type, enabled, weight }) => ({
+            type,
+            enabled,
+            weight,
+          })),
         },
       }),
     onSuccess: async () => {
@@ -381,6 +394,19 @@ export function AdminUsersClient() {
                   ))}
                 </div>
               </div>
+              <div>
+                <Label>Impact Plan sections & weights</Label>
+                <p className="mt-1 text-xs text-muted">
+                  Staff will use this breakdown when they create their {new Date().getFullYear()}{" "}
+                  plan. Weights must total 100%.
+                </p>
+                <div className="mt-3">
+                  <PlanComponentWeightsEditor
+                    components={planComponents}
+                    onChange={setPlanComponents}
+                  />
+                </div>
+              </div>
               <label className="flex items-center gap-2 text-sm text-navy">
                 <input
                   type="checkbox"
@@ -392,6 +418,9 @@ export function AdminUsersClient() {
               <Button
                 type="submit"
                 size="full"
+                disabled={
+                  planComponents.filter((c) => c.enabled).reduce((s, c) => s + c.weight, 0) !== 100
+                }
                 loading={inviteMutation.isPending}
                 loadingText="Sending invitation…"
               >

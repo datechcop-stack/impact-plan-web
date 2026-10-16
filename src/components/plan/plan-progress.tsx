@@ -22,7 +22,6 @@ function activeIndex(status: PlanStatus, pmDone?: number, pmTotal?: number): num
     case "DRAFT":
       return 0;
     case "LOCKED":
-      if (pmTotal && pmDone !== undefined && pmDone < pmTotal) return 4;
       return 1;
     case "PARTLY_UNLOCKED":
     case "UNLOCKED":

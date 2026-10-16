@@ -140,7 +140,8 @@ export function PmReviewClient() {
           / {entry.owner.fullName} / <span className="text-navy font-semibold">{entry.title}</span>
         </p>
         <p className="text-sm text-muted">
-          Entry of {queue.awaitingCount} awaiting for {entry.owner.fullName.split(" ")[0]}
+          {goalReviewPhase ? "Goal review" : "Scoring"} · {queue.awaitingCount} entries awaiting for{" "}
+          {entry.owner.fullName.split(" ")[0]}
         </p>
       </div>
 
@@ -152,9 +153,11 @@ export function PmReviewClient() {
           <h1 className="mt-2 text-2xl font-extrabold text-navy">{entry.title}</h1>
           <p className="mt-1 text-sm text-muted">
             Owner: {entry.owner.fullName} · Due {new Date(entry.dueDate).toLocaleDateString()} ·{" "}
-            {entry.submittedAt
-              ? `Submitted ${new Date(entry.submittedAt).toLocaleDateString()}`
-              : "Not submitted"}
+            {goalReviewPhase
+              ? "Plan locked · goal review"
+              : entry.submittedAt
+                ? `Self-assessment submitted ${new Date(entry.submittedAt).toLocaleDateString()}`
+                : "Self-assessment not submitted yet"}
           </p>
           <div className="mt-4 rounded-lg bg-background p-3">
             <p className="text-xs font-semibold uppercase text-muted">

@@ -363,7 +363,9 @@ export function MyPlanClient() {
                                 ? isGoalReview && entry.pmReview?.score == null
                                   ? "Goal reviewed"
                                   : "PM Reviewed"
-                                : "Awaiting PM"}
+                                : isGoalReview
+                                  ? "Awaiting goal review"
+                                  : "Awaiting PM scoring"}
                             </Badge>
                           </td>
                           <td>

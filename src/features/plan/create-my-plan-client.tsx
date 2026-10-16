@@ -3,18 +3,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { StateView } from "@/components/ui/state-view";
 import { useToast } from "@/components/ui/toast";
 import { ComponentEntriesStep, type EntryDraft } from "@/features/plan/component-entries-step";
+import { prepareDraftEntries } from "@/features/plan/prepare-draft-entries";
 import { apiFetch, type PublicUser } from "@/lib/api/client";
 import { COMPONENT_META, type ComponentType } from "@/lib/plan";
 
 const YEAR = 2026;
-const ENABLED_TYPES: ComponentType[] = ["PROJECTS", "BD", "TECH_PERSONAL", "COP"];
+
+type CreateTemplateResponse = {
+  components: Array<{ type: ComponentType; enabled: boolean; weight: number }>;
+};
 
 export function CreateMyPlanClient() {
   const router = useRouter();
@@ -28,13 +32,25 @@ export function CreateMyPlanClient() {
     queryFn: () => apiFetch<PublicUser>("/auth/me"),
   });
 
+  const templateQuery = useQuery({
+    queryKey: ["plan-create-template"],
+    queryFn: () => apiFetch<CreateTemplateResponse>("/me/plan/create-template"),
+  });
+
+  const enabledTypes = useMemo(
+    () =>
+      templateQuery.data?.components.filter((c) => c.enabled).map((c) => c.type) ??
+      (["PROJECTS", "BD", "TECH_PERSONAL", "COP"] as ComponentType[]),
+    [templateQuery.data],
+  );
+
   const createMutation = useMutation({
     mutationFn: (lock: boolean) =>
       apiFetch("/me/plan", {
         method: "POST",
         json: {
           year: YEAR,
-          entries,
+          entries: prepareDraftEntries(entries, YEAR),
           lock,
         },
       }),
@@ -55,7 +71,7 @@ export function CreateMyPlanClient() {
 
   const user = meQuery.data;
 
-  if (meQuery.isLoading) {
+  if (meQuery.isLoading || templateQuery.isLoading) {
     return (
       <AppShell active="plan">
         <StateView state="loading" title="Preparing your plan wizard…" />
@@ -123,7 +139,7 @@ export function CreateMyPlanClient() {
         <Card>
           {step === 1 ? (
             <ComponentEntriesStep
-              enabledTypes={ENABLED_TYPES}
+              enabledTypes={enabledTypes}
               entries={entries}
               onChange={setEntries}
               ownerUserId={user.id}
@@ -138,7 +154,7 @@ export function CreateMyPlanClient() {
                 <strong>Entries:</strong> {entries.length}
               </p>
               <ul className="list-disc space-y-1 pl-5 text-muted">
-                {ENABLED_TYPES.map((type) => {
+                {enabledTypes.map((type) => {
                   const count = entries.filter((e) => e.type === type).length;
                   return (
                     <li key={type}>
