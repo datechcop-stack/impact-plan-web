@@ -29,6 +29,7 @@ type EntryResponse = {
     weight: number;
     owner: { id: string; fullName: string; jobTitle: string | null };
     planStatus: string;
+    revisionOpen: boolean;
     submittedAt: string | null;
     selfAssessment: {
       result: "ACHIEVED" | "PARTLY" | "NOT";
@@ -127,9 +128,12 @@ export function PmReviewClient() {
   const { entry, queue } = entryQuery.data;
   const meta = COMPONENT_META[entry.componentType];
   const goalReviewPhase = entry.planStatus === "LOCKED";
+  const revisionOpen = entry.revisionOpen && entry.planStatus === "IN_REVIEW";
   const readOnly =
     entry.planStatus === "FINALIZED" ||
-    (entry.pmReview?.status === "REVIEWED" && (goalReviewPhase || entry.pmReview.score != null));
+    (!revisionOpen &&
+      entry.pmReview?.status === "REVIEWED" &&
+      (goalReviewPhase || entry.pmReview.score != null));
 
   return (
     <AppShell active="projects" userName="PM">
@@ -295,7 +299,9 @@ export function PmReviewClient() {
                   disabled={!comment.trim() || markReviewed.isPending}
                   onClick={() => markReviewed.mutate()}
                 >
-                  Mark PM Reviewed & next entry
+                  {revisionOpen && entry.pmReview?.status === "REVIEWED"
+                    ? "Update score & comment"
+                    : "Mark PM Reviewed & next entry"}
                 </Button>
               )}
               <Button

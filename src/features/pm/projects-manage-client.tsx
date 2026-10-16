@@ -27,6 +27,7 @@ type PmListResponse = {
     reviewed: number;
     notSubmitted: boolean;
     planStatus: string;
+    revisionOpen: boolean;
     entries: Array<{
       id: string;
       title: string;
@@ -158,11 +159,13 @@ export function ProjectsManageClient() {
                           {group.owner.jobTitle ?? "Staff"}
                           {group.planStatus === "REVIEW_OPEN"
                             ? " · Self-assessment in progress"
-                            : group.submittedAt && group.planStatus === "IN_REVIEW"
-                              ? ` · Self-assessment submitted ${new Date(group.submittedAt).toLocaleDateString()}`
-                              : group.planStatus === "LOCKED"
-                                ? " · Goal review"
-                                : ""}
+                            : group.revisionOpen
+                              ? " · Reopened for rescoring"
+                              : group.submittedAt && group.planStatus === "IN_REVIEW"
+                                ? ` · Self-assessment submitted ${new Date(group.submittedAt).toLocaleDateString()}`
+                                : group.planStatus === "LOCKED"
+                                  ? " · Goal review"
+                                  : ""}
                         </p>
                       </div>
                     </div>
@@ -204,9 +207,11 @@ export function ProjectsManageClient() {
                                   ? `PM Reviewed · ${entry.score}%`
                                   : "Goal reviewed"
                                 : entry.status === "AWAITING"
-                                  ? entry.reviewPhase === "SCORING"
-                                    ? "Awaiting PM scoring"
-                                    : "Awaiting goal review"
+                                  ? group.revisionOpen
+                                    ? "Update score"
+                                    : entry.reviewPhase === "SCORING"
+                                      ? "Awaiting PM scoring"
+                                      : "Awaiting goal review"
                                   : "Not ready"}
                             </Badge>
                             {entry.status === "AWAITING" ? (
@@ -214,7 +219,7 @@ export function ProjectsManageClient() {
                                 href={`/app/projects/${entry.id}`}
                                 className="inline-flex h-9 items-center rounded-lg bg-navy px-3 text-xs font-semibold text-white hover:bg-navy-soft"
                               >
-                                Review
+                                {group.revisionOpen ? "Update" : "Review"}
                               </Link>
                             ) : entry.status === "REVIEWED" ? (
                               <Link

@@ -57,6 +57,7 @@ export function MyPlanClient() {
     }>
   >([]);
   const [removedEntryIds, setRemovedEntryIds] = useState<string[]>([]);
+  const [employeeFeedback, setEmployeeFeedback] = useState("");
 
   const [planYear, setPlanYear] = useState(2026);
 
@@ -88,6 +89,15 @@ export function MyPlanClient() {
 
   const submitPlan = useMutation({
     mutationFn: () => apiFetch("/me/plan/submit", { method: "POST", json: {} }),
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["my-plan"] }),
+  });
+
+  const submitFeedback = useMutation({
+    mutationFn: () =>
+      apiFetch("/me/plan/feedback", {
+        method: "POST",
+        json: { feedback: employeeFeedback, year: planYear },
+      }),
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["my-plan"] }),
   });
 
@@ -159,6 +169,11 @@ export function MyPlanClient() {
     );
   }, [planQuery.data?.plan, editingEntries.length]);
 
+  useEffect(() => {
+    const feedback = planQuery.data?.plan?.employeeFeedback;
+    if (feedback) setEmployeeFeedback(feedback);
+  }, [planQuery.data?.plan?.employeeFeedback]);
+
   if (planQuery.isLoading) {
     return (
       <AppShell active="plan">
@@ -207,7 +222,9 @@ export function MyPlanClient() {
   const isSelfAssessment =
     plan.status === "REVIEW_OPEN" && planQuery.data?.reviewCycle?.purpose !== "MIDYEAR_PLAN_UPDATE";
   const isInReview = plan.status === "IN_REVIEW" || plan.status === "FINALIZED";
-  const isViewOnlyArchive = plan.status === "FINALIZED" || plan.year < 2026;
+  const feedbackDue = plan.status === "FINALIZED" && !plan.employeeFeedbackAt;
+  const concluded = plan.status === "FINALIZED" && Boolean(plan.employeeFeedbackAt);
+  const isViewOnlyArchive = concluded || plan.year < 2026;
   const midyearUpdateOpen =
     plan.status === "UNLOCKED" &&
     plan.changeLogs.some((log) => log.action.includes("MIDYEAR_REVIEW_OPENED"));
@@ -243,9 +260,17 @@ export function MyPlanClient() {
           cannot remove existing entries — only add or update them.
         </div>
       ) : null}
+      {feedbackDue ? (
+        <div className="mb-4 rounded-lg bg-success-soft px-4 py-3 text-sm text-success">
+          Your line manager has finalized this plan. Add your feedback below the line manager
+          comment and submit it. That submit concludes your Impact Plan for {plan.year}.
+        </div>
+      ) : null}
       {isViewOnlyArchive ? (
         <div className="mb-4 rounded-lg bg-muted/10 px-4 py-3 text-sm text-muted">
-          This plan is archived for {plan.year}. You can view it here but cannot make changes.
+          {concluded
+            ? `This Impact Plan is concluded for ${plan.year}.`
+            : `This plan is archived for ${plan.year}. You can view it here but cannot make changes.`}
         </div>
       ) : null}
       {isGoalReview && pmDone < allEntries.length ? (
@@ -276,7 +301,9 @@ export function MyPlanClient() {
             <h1 className="text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
               {isSelfAssessment ? `Self-assessment ${plan.year}` : `My Impact Plan ${plan.year}`}
             </h1>
-            <Badge variant={statusBadgeVariant(plan.status)}>{statusLabel(plan.status)}</Badge>
+            <Badge variant={concluded || feedbackDue ? "success" : statusBadgeVariant(plan.status)}>
+              {concluded ? "Concluded" : feedbackDue ? "Your feedback" : statusLabel(plan.status)}
+            </Badge>
           </div>
           <p className="mt-1.5 text-sm text-muted">
             {plan.owner.fullName}
@@ -771,6 +798,50 @@ export function MyPlanClient() {
                   {plan.lineManagerComment ??
                     `${plan.owner.lineManager?.fullName ?? "Your line manager"} adds this once every entry is PM reviewed.`}
                 </p>
+                {plan.recommendation ? (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      Recommendation
+                    </p>
+                    <p className="mt-2 text-sm text-navy">{plan.recommendation}</p>
+                  </div>
+                ) : null}
+                {plan.status === "FINALIZED" ? (
+                  <div className="mt-4">
+                    <Label htmlFor="employee-feedback">Employee feedback</Label>
+                    {feedbackDue ? (
+                      <>
+                        <Textarea
+                          id="employee-feedback"
+                          className="mt-1 h-28"
+                          value={employeeFeedback}
+                          onChange={(event) => setEmployeeFeedback(event.target.value)}
+                          placeholder="Your response to the final review"
+                        />
+                        <Button
+                          className="mt-3"
+                          size="full"
+                          disabled={!employeeFeedback.trim() || submitFeedback.isPending}
+                          loading={submitFeedback.isPending}
+                          loadingText="Submitting…"
+                          onClick={() => submitFeedback.mutate()}
+                        >
+                          Submit feedback
+                        </Button>
+                        <p className="mt-2 text-xs text-muted">
+                          Submitting concludes your Impact Plan for {plan.year}.
+                        </p>
+                        {submitFeedback.isError ? (
+                          <p className="mt-2 text-sm text-danger">
+                            {(submitFeedback.error as Error).message}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-navy">{plan.employeeFeedback}</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </Card>
           ) : null}

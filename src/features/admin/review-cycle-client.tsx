@@ -318,6 +318,11 @@ export function ReviewCycleClient() {
                 </li>
                 <li>Tagged project managers score each entry 0–100% with a comment.</li>
                 <li>Line managers add one overall comment and finalize once every score is in.</li>
+                <li>Staff add employee feedback and submit. That submit concludes the year.</li>
+                <li>
+                  Admin can reopen a finalized plan so project managers and the line manager can
+                  update scores, comments, and the recommendation.
+                </li>
                 <li>Plans archived for {year}. Export from Impact plans for LT.</li>
               </ol>
             </Card>

@@ -36,6 +36,9 @@ type PersonPlanResponse = {
     submittedAt: string | null;
     lineManagerComment: string | null;
     recommendation: string | null;
+    employeeFeedback: string | null;
+    employeeFeedbackAt: string | null;
+    revisionOpen: boolean;
     owner: { id: string; fullName: string; jobTitle: string | null };
     components: Array<{
       type: ComponentType;
@@ -256,7 +259,9 @@ export function FinalizeClient() {
           <Card>
             <CardTitle>Your overall comment</CardTitle>
             <p className="mt-1 text-sm text-muted">
-              One comment for the whole year. Separate from each PM&apos;s comment.
+              {plan.revisionOpen
+                ? "This plan was reopened. Update the comment or recommendation, then finalize again. Tagged managers can update scores while it stays open."
+                : "One comment for the whole year. Separate from each PM's comment."}
             </p>
             <Label htmlFor="lm-comment" className="sr-only">
               Overall comment
@@ -302,11 +307,11 @@ export function FinalizeClient() {
                   disabled={!canFinalize || finalizeMutation.isPending}
                   onClick={() => finalizeMutation.mutate()}
                 >
-                  Finalize plan
+                  {plan.revisionOpen ? "Update & finalize" : "Finalize plan"}
                 </Button>
                 <p className="mt-2 text-xs text-muted">
-                  Finalizing archives the plan for {plan.year}. It can&apos;t be edited afterwards
-                  without the admin.
+                  Finalizing asks {plan.owner.fullName.split(" ")[0]} to add employee feedback.
+                  Submitting that feedback concludes the plan for {plan.year}.
                 </p>
                 {finalizeMutation.isError ? (
                   <p className="mt-2 text-sm text-danger">
@@ -315,7 +320,21 @@ export function FinalizeClient() {
                 ) : null}
               </>
             ) : (
-              <p className="mt-4 text-sm text-success">This plan is finalized.</p>
+              <>
+                <p className="mt-4 text-sm text-success">
+                  {plan.employeeFeedbackAt
+                    ? "Employee feedback is submitted. This plan is concluded."
+                    : `This plan is finalized. ${plan.owner.fullName.split(" ")[0]} can add employee feedback to conclude the year.`}
+                </p>
+                {plan.employeeFeedback ? (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      Employee feedback
+                    </p>
+                    <p className="mt-2 text-sm text-navy">{plan.employeeFeedback}</p>
+                  </div>
+                ) : null}
+              </>
             )}
           </Card>
         </div>

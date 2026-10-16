@@ -43,6 +43,8 @@ export type MyPlanResponse = {
     submittedAt: string | null;
     lineManagerComment: string | null;
     recommendation: string | null;
+    employeeFeedback: string | null;
+    employeeFeedbackAt: string | null;
     createdAt: string;
     owner: {
       id: string;

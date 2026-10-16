@@ -28,6 +28,9 @@ type AdminPlanDetail = {
   finalScore: number | null;
   lineManagerComment: string | null;
   recommendation: string | null;
+  employeeFeedback: string | null;
+  employeeFeedbackAt: string | null;
+  revisionOpen: boolean;
   createdAt: string;
   lockedAt: string | null;
   submittedAt: string | null;
@@ -95,6 +98,14 @@ export function AdminPlanDetailClient() {
     },
   });
 
+  const reopenMutation = useMutation({
+    mutationFn: () => apiFetch(`/admin/plans/${planId}/reopen`, { method: "POST", json: {} }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+
   const reassignManagerMutation = useMutation({
     mutationFn: ({ entryId, managerId }: { entryId: string; managerId: string }) =>
       apiFetch(`/admin/plans/${planId}/entries/${entryId}/manager`, {
@@ -132,6 +143,7 @@ export function AdminPlanDetailClient() {
   const plan = planQuery.data;
   const canLock = plan.status === "DRAFT";
   const canRelock = plan.status === "UNLOCKED" || plan.status === "PARTLY_UNLOCKED";
+  const canReopen = plan.status === "FINALIZED";
 
   return (
     <AdminShell active="plans">
@@ -165,14 +177,31 @@ export function AdminPlanDetailClient() {
               Re-lock plan
             </Button>
           ) : null}
+          {canReopen ? (
+            <Button
+              variant="secondary"
+              onClick={() => reopenMutation.mutate()}
+              disabled={reopenMutation.isPending}
+              loading={reopenMutation.isPending}
+              loadingText="Reopening…"
+            >
+              Reopen for review
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      {(lockMutation.isError || relockMutation.isError) && (
+      {(lockMutation.isError || relockMutation.isError || reopenMutation.isError) && (
         <p className="mt-3 text-sm text-danger">
-          {((lockMutation.error ?? relockMutation.error) as Error).message}
+          {((lockMutation.error ?? relockMutation.error ?? reopenMutation.error) as Error).message}
         </p>
       )}
+      {plan.revisionOpen ? (
+        <p className="mt-3 text-sm text-navy">
+          This plan is open for rescoring. Project managers can update scores and comments. The line
+          manager can update the comment and recommendation, then finalize again.
+        </p>
+      ) : null}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="space-y-4">
@@ -269,6 +298,12 @@ export function AdminPlanDetailClient() {
               <div>
                 <dt className="text-xs font-semibold uppercase text-muted">Recommendation</dt>
                 <dd className="mt-1 text-navy">{plan.recommendation ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase text-muted">Employee feedback</dt>
+                <dd className="mt-1 text-navy">
+                  {plan.employeeFeedbackAt ? plan.employeeFeedback : "Not submitted"}
+                </dd>
               </div>
             </dl>
           </Card>
