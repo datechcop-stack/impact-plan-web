@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { EntryAccordion, entryAccordionKey } from "@/components/plan/entry-accordion";
 import { PlanProgress } from "@/components/plan/plan-progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { StateView } from "@/components/ui/state-view";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPicker } from "@/components/ui/user-picker";
 import { EditRequestModal } from "@/features/plan/edit-request-modal";
+import { ImpactPlanGuide } from "@/features/plan/impact-plan-guide";
 import { EntryObjectivesEditor } from "@/features/plan/entry-objectives-editor";
 import { EntryObjectivesView } from "@/features/plan/entry-objectives-view";
 import {
@@ -58,6 +60,7 @@ export function MyPlanClient() {
   >([]);
   const [removedEntryIds, setRemovedEntryIds] = useState<string[]>([]);
   const [employeeFeedback, setEmployeeFeedback] = useState("");
+  const [expandedEditKey, setExpandedEditKey] = useState<string | null>(null);
 
   const [planYear, setPlanYear] = useState(2026);
 
@@ -201,6 +204,7 @@ export function MyPlanClient() {
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
           My Impact Plan 2026
         </h1>
+        <ImpactPlanGuide className="mt-6 max-w-3xl" />
         <StateView
           className="mt-8 max-w-xl"
           state="empty"
@@ -293,6 +297,8 @@ export function MyPlanClient() {
           ) : null}
         </div>
       ) : null}
+
+      <ImpactPlanGuide className="mb-6" />
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -551,15 +557,44 @@ export function MyPlanClient() {
                         <div className="mt-4 space-y-4">
                           {editingEntries
                             .filter((e) => e.componentType === component.type)
-                            .map((entry, index) => {
+                            .map((entry) => {
                               const globalIndex = editingEntries.findIndex(
                                 (item) =>
                                   item === entry || (item.id && entry.id && item.id === entry.id),
                               );
+                              const accordionKey = entryAccordionKey(
+                                entry.componentType,
+                                globalIndex,
+                                entry.id,
+                              );
+                              const expanded = expandedEditKey === accordionKey;
+                              const displayTitle =
+                                entry.title.trim() ||
+                                `New ${COMPONENT_META[entry.componentType].shortLabel} entry`;
                               return (
-                                <div
-                                  key={entry.id ?? `new-${index}`}
-                                  className="rounded-lg border border-border p-4"
+                                <EntryAccordion
+                                  key={accordionKey}
+                                  title={displayTitle}
+                                  subtitle={COMPONENT_META[entry.componentType].label}
+                                  expanded={expanded}
+                                  onToggle={() =>
+                                    setExpandedEditKey((current) =>
+                                      current === accordionKey ? null : accordionKey,
+                                    )
+                                  }
+                                  onRemove={
+                                    !entry.id
+                                      ? () => {
+                                          setEditingEntries((items) =>
+                                            items.filter((_, i) => i !== globalIndex),
+                                          );
+                                          if (expandedEditKey === accordionKey) {
+                                            setExpandedEditKey(null);
+                                          }
+                                        }
+                                      : undefined
+                                  }
+                                  removeLabel="Remove unsaved entry"
                                 >
                                   <div className="grid gap-3 md:grid-cols-2">
                                     <div>
@@ -645,25 +680,13 @@ export function MyPlanClient() {
                                       />
                                     </div>
                                   </div>
-                                  {!entry.id ? (
-                                    <Button
-                                      className="mt-3"
-                                      variant="link"
-                                      onClick={() =>
-                                        setEditingEntries((items) =>
-                                          items.filter((_, i) => i !== globalIndex),
-                                        )
-                                      }
-                                    >
-                                      Remove unsaved entry
-                                    </Button>
-                                  ) : null}
-                                </div>
+                                </EntryAccordion>
                               );
                             })}
                           <Button
                             variant="link"
-                            onClick={() =>
+                            onClick={() => {
+                              const nextIndex = editingEntries.length;
                               setEditingEntries((items) => [
                                 ...items,
                                 {
@@ -673,8 +696,11 @@ export function MyPlanClient() {
                                   managerId: "",
                                   dueDate: `${plan.year}-12-31`,
                                 },
-                              ])
-                            }
+                              ]);
+                              setExpandedEditKey(
+                                entryAccordionKey(component.type, nextIndex, undefined),
+                              );
+                            }}
                           >
                             + Add another entry
                           </Button>

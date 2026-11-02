@@ -129,8 +129,12 @@ export function PmReviewClient() {
   const meta = COMPONENT_META[entry.componentType];
   const goalReviewPhase = entry.planStatus === "LOCKED";
   const revisionOpen = entry.revisionOpen && entry.planStatus === "IN_REVIEW";
+  const scoringPhase = !goalReviewPhase;
+  const selfAssessmentReady = Boolean(entry.submittedAt) && Boolean(entry.selfAssessment);
+  const scoringBlocked = scoringPhase && !selfAssessmentReady;
   const readOnly =
     entry.planStatus === "FINALIZED" ||
+    scoringBlocked ||
     (!revisionOpen &&
       entry.pmReview?.status === "REVIEWED" &&
       (goalReviewPhase || entry.pmReview.score != null));
@@ -201,6 +205,12 @@ export function PmReviewClient() {
             <p className="mt-2 text-sm text-muted">
               Review this entry&apos;s objectives before the plan is set for the year. Scoring
               happens after the owner submits their year-end self-assessment.
+            </p>
+          ) : null}
+          {scoringBlocked ? (
+            <p className="mt-2 text-sm text-warning">
+              Scoring is locked until {entry.owner.fullName.split(" ")[0]} completes this
+              entry&apos;s self-assessment and submits the plan for review.
             </p>
           ) : null}
           {!goalReviewPhase ? (
@@ -318,7 +328,7 @@ export function PmReviewClient() {
                 </p>
               )}
             </div>
-          ) : (
+          ) : scoringBlocked ? null : (
             <p className="mt-4 text-sm text-success">This entry is already PM Reviewed.</p>
           )}
         </Card>

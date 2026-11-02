@@ -76,6 +76,7 @@ type PersonPlanResponse = {
     pmDone: number;
     pmTotal: number;
     commentAdded: boolean;
+    readyForFinalReview: boolean;
   };
 };
 
@@ -130,10 +131,8 @@ export function FinalizeClient() {
 
   const { plan, score, checklist } = planQuery.data;
   const canFinalize =
-    checklist.selfAssessmentSubmitted &&
-    checklist.pmReviewed &&
-    comment.trim().length > 0 &&
-    plan.status === "IN_REVIEW";
+    checklist.readyForFinalReview && comment.trim().length > 0 && plan.status === "IN_REVIEW";
+  const reviewLocked = plan.status === "IN_REVIEW" && !checklist.readyForFinalReview;
 
   return (
     <AppShell active="people" userName="LM">
@@ -160,6 +159,14 @@ export function FinalizeClient() {
           </p>
         </div>
       </div>
+
+      {reviewLocked ? (
+        <div className="mt-6 rounded-lg bg-warning-soft px-4 py-3 text-sm text-navy">
+          Final review unlocks after {plan.owner.fullName.split(" ")[0]} submits their
+          self-assessment and every entry has a project manager score ({checklist.pmDone} of{" "}
+          {checklist.pmTotal} scored so far).
+        </div>
+      ) : null}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">
@@ -270,7 +277,7 @@ export function FinalizeClient() {
               id="lm-comment"
               className="mt-3 min-h-32 w-full rounded-lg border border-border px-3 py-2 text-sm"
               value={comment}
-              disabled={plan.status === "FINALIZED"}
+              disabled={plan.status === "FINALIZED" || reviewLocked}
               onChange={(event) => setComment(event.target.value)}
             />
             <Label
@@ -283,7 +290,7 @@ export function FinalizeClient() {
               id="lm-recommendation"
               className="mt-2 min-h-24 w-full rounded-lg border border-border px-3 py-2 text-sm"
               value={recommendation}
-              disabled={plan.status === "FINALIZED"}
+              disabled={plan.status === "FINALIZED" || reviewLocked}
               placeholder="Promotion, development focus, or other LT recommendation"
               onChange={(event) => setRecommendation(event.target.value)}
             />

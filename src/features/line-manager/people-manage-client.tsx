@@ -224,13 +224,21 @@ export function PeopleManageClient() {
                           >
                             Send reminder
                           </button>
-                        ) : (
+                        ) : person.stage === "FINALIZED" ? (
                           <Link
                             href={`/app/people/${person.id}`}
                             className="text-sm font-semibold text-accent"
                           >
-                            {person.uiStatus === "FINALIZED" ? "View" : "View plan"}
+                            View
                           </Link>
+                        ) : (
+                          <span className="text-sm text-muted">
+                            {person.stage === "SELF_ASSESSMENT"
+                              ? "Waiting on self-assessment"
+                              : person.stage === "PM_SCORING"
+                                ? "Waiting on PM scores"
+                                : "Not ready to review"}
+                          </span>
                         )}
                       </td>
                     </tr>

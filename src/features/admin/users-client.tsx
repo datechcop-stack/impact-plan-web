@@ -12,6 +12,7 @@ import { TwoColumnFormSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { useToast } from "@/components/ui/toast";
 import { UserPicker } from "@/components/ui/user-picker";
+import { BulkInviteModal } from "@/features/admin/bulk-invite-modal";
 import {
   PlanComponentWeightsEditor,
   PROGRAMME_COMPONENT_TEMPLATE,
@@ -47,6 +48,7 @@ export function AdminUsersClient() {
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [editingLineManagerId, setEditingLineManagerId] = useState<string | null>(null);
   const [lineManagerDraft, setLineManagerDraft] = useState("");
+  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
 
   const meQuery = useQuery({
     queryKey: ["auth-me"],
@@ -146,10 +148,15 @@ export function AdminUsersClient() {
       <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">
         Users & invitations
       </h1>
-      <p className="mt-1.5 text-sm text-muted">
-        Invite staff, set their line manager, track activation, and remove people who should no
-        longer have access.
-      </p>
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          Invite staff, set their line manager, track activation, and remove people who should no
+          longer have access.
+        </p>
+        <Button variant="secondary" onClick={() => setBulkInviteOpen(true)}>
+          Bulk invite (CSV)
+        </Button>
+      </div>
       {usersQuery.isLoading || meQuery.isLoading ? (
         <TwoColumnFormSkeleton />
       ) : (
@@ -433,6 +440,12 @@ export function AdminUsersClient() {
           </Card>
         </div>
       )}
+      <BulkInviteModal
+        open={bulkInviteOpen}
+        onClose={() => setBulkInviteOpen(false)}
+        onSuccess={(message) => toast.success("Bulk invite complete", message)}
+        onError={(message) => toast.error("Bulk invite failed", message)}
+      />
     </AdminShell>
   );
 }

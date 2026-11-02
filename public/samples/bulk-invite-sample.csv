@@ -1,0 +1,3 @@
+full_name,email,job_title,line_manager_email,role
+Ada Okonkwo,ada.okonkwo@example.com,Programme Associate,,STAFF
+Kimble Mensah,kimble.mensah@example.com,Senior Analyst,ada.okonkwo@example.com,STAFF

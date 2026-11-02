@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EntryAccordion, entryAccordionKey } from "@/components/plan/entry-accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,12 +38,32 @@ export function ComponentEntriesStep({
   allowRemove = true,
 }: ComponentEntriesStepProps) {
   const [activeType, setActiveType] = useState<ComponentType>(enabledTypes[0] ?? "PROJECTS");
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  function toggleKey(key: string) {
+    setExpandedKey((current) => (current === key ? null : key));
+  }
+
+  function addEntry() {
+    const nextIndex = entries.length;
+    onChange([
+      ...entries,
+      {
+        type: activeType,
+        title: "",
+        objectives: emptyObjectives(),
+        managerId: "",
+        dueDate: `${year}-12-31`,
+      },
+    ]);
+    setExpandedKey(entryAccordionKey(activeType, nextIndex));
+  }
 
   return (
     <div>
       <p className="text-sm text-muted">
-        Choose a plan section, then add entries for that component. This keeps Projects, Business
-        Development, Personal Development, and CoP clearly separated.
+        Choose a plan section, then add entries for that component. Expand one entry at a time —
+        when you add another, the previous one collapses automatically.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {enabledTypes.map((type) => {
@@ -68,34 +89,34 @@ export function ComponentEntriesStep({
         })}
       </div>
 
-      <Button
-        className="mt-4"
-        variant="secondary"
-        onClick={() =>
-          onChange([
-            ...entries,
-            {
-              type: activeType,
-              title: "",
-              objectives: emptyObjectives(),
-              managerId: "",
-              dueDate: `${year}-12-31`,
-            },
-          ])
-        }
-      >
+      <Button className="mt-4" variant="secondary" onClick={addEntry}>
         + Add {COMPONENT_META[activeType].label} entry
       </Button>
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 space-y-3">
         {entries.map((entry, index) => {
           if (entry.type !== activeType) return null;
+          const key = entryAccordionKey(entry.type, index);
+          const expanded = expandedKey === key;
+          const displayTitle =
+            entry.title.trim() || `New ${COMPONENT_META[entry.type].shortLabel} entry`;
           return (
-            <div key={index} className="rounded-xl border border-border p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                {COMPONENT_META[entry.type].label}
-              </p>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <EntryAccordion
+              key={key}
+              title={displayTitle}
+              subtitle={COMPONENT_META[entry.type].label}
+              expanded={expanded}
+              onToggle={() => toggleKey(key)}
+              onRemove={
+                allowRemove
+                  ? () => {
+                      onChange(entries.filter((_, i) => i !== index));
+                      if (expandedKey === key) setExpandedKey(null);
+                    }
+                  : undefined
+              }
+            >
+              <div className="grid gap-3 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <Label>Entry title</Label>
                   <Input
@@ -141,16 +162,7 @@ export function ComponentEntriesStep({
                   />
                 </div>
               </div>
-              {allowRemove ? (
-                <Button
-                  className="mt-3"
-                  variant="link"
-                  onClick={() => onChange(entries.filter((_, i) => i !== index))}
-                >
-                  Remove entry
-                </Button>
-              ) : null}
-            </div>
+            </EntryAccordion>
           );
         })}
         {entries.every((entry) => entry.type !== activeType) ? (
