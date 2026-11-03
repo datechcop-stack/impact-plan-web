@@ -18,7 +18,7 @@ import {
   PROGRAMME_COMPONENT_TEMPLATE,
   type PlanComponentState,
 } from "@/features/plan/plan-component-weights-editor";
-import { apiFetch, type PublicUser } from "@/lib/api/client";
+import { apiFetch, getErrorMessage, type PublicUser } from "@/lib/api/client";
 
 type UserRow = {
   id: string;
@@ -88,7 +88,7 @@ export function AdminUsersClient() {
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (error) => {
-      toast.error("Invite failed", error.message);
+      toast.error("Invite failed", getErrorMessage(error));
     },
   });
 
@@ -100,7 +100,7 @@ export function AdminUsersClient() {
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (error) => {
-      toast.error("Resend failed", error.message);
+      toast.error("Resend failed", getErrorMessage(error));
     },
   });
 
@@ -117,7 +117,7 @@ export function AdminUsersClient() {
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (error) => {
-      toast.error("Update failed", error.message);
+      toast.error("Update failed", getErrorMessage(error));
     },
   });
 
@@ -138,7 +138,7 @@ export function AdminUsersClient() {
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (error) => {
-      toast.error("Remove failed", error.message);
+      toast.error("Remove failed", getErrorMessage(error));
     },
   });
 

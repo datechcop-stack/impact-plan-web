@@ -89,6 +89,13 @@ export function parseBulkInviteCsv(text: string): ParsedBulkInvite {
       errors.push({ line: lineNumber, message: `Invalid email: ${email || "(empty)"}` });
       continue;
     }
+    if (lineManagerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lineManagerEmail)) {
+      errors.push({
+        line: lineNumber,
+        message: `Invalid line manager email: ${lineManagerEmail}`,
+      });
+      continue;
+    }
     if (roleRaw && roleRaw !== "STAFF" && roleRaw !== "ADMIN") {
       errors.push({ line: lineNumber, message: `Role must be STAFF or ADMIN (got ${roleRaw}).` });
       continue;

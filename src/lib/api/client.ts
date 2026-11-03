@@ -20,6 +20,74 @@ export class ApiError extends Error {
   }
 }
 
+function validationDetailsSummary(details: unknown): string | null {
+  if (!details || typeof details !== "object") return null;
+  const flat = details as {
+    formErrors?: string[];
+    fieldErrors?: Record<string, string[] | undefined>;
+  };
+  const parts: string[] = [...(flat.formErrors ?? [])];
+  for (const [field, messages] of Object.entries(flat.fieldErrors ?? {})) {
+    if (messages?.length) {
+      parts.push(`${field}: ${messages.join(", ")}`);
+    }
+  }
+  if (parts.length === 0) return null;
+  return parts.slice(0, 4).join(" · ");
+}
+
+export function messageFromErrorBody(body: unknown, status: number): string {
+  if (!body || typeof body !== "object") {
+    if (status === 502 || status === 503) {
+      return "Could not reach the API. Check that the server is running.";
+    }
+    return "Request failed.";
+  }
+
+  const record = body as Record<string, unknown>;
+  if (typeof record.message === "string" && record.message.trim()) {
+    return record.message.trim();
+  }
+
+  const err = record.error;
+  if (typeof err === "string" && err.trim()) {
+    return err.trim();
+  }
+
+  if (err && typeof err === "object") {
+    const envelope = err as { message?: unknown; details?: unknown; code?: string };
+    const base =
+      typeof envelope.message === "string" && envelope.message.trim()
+        ? envelope.message.trim()
+        : null;
+    const detailText = validationDetailsSummary(envelope.details);
+    if (base && detailText) return `${base} ${detailText}`;
+    if (base) return base;
+    if (detailText) return detailText;
+  }
+
+  if (status === 404) {
+    return "API route not found. Check API_UPSTREAM_URL and that the API is running.";
+  }
+  return `Request failed (${status}).`;
+}
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.message && error.message !== "undefined" && error.message !== "Request failed.") {
+      return error.message;
+    }
+    return messageFromErrorBody(error.body, error.status);
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+  return "Something went wrong.";
+}
+
 function readCsrfCookie(): string | null {
   if (typeof document === "undefined") {
     return null;
@@ -80,10 +148,7 @@ export async function apiFetch<T>(
     if (response.status === 401) {
       redirectToSignIn();
     }
-    const message =
-      body && typeof body === "object" && "error" in body
-        ? String((body as { error: { message: string } }).error.message)
-        : "Request failed";
+    const message = messageFromErrorBody(body, response.status);
     throw new ApiError(message, response.status, body);
   }
   return body as T;

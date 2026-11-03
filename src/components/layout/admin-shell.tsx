@@ -154,18 +154,18 @@ export function AdminShell({ active, children }: AdminShellProps) {
   }, [menuOpen]);
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="relative hidden overflow-hidden bg-navy px-4 py-6 text-white lg:flex lg:flex-col">
+    <div className="min-h-screen lg:flex lg:h-screen lg:overflow-hidden">
+      <aside className="relative hidden shrink-0 overflow-hidden bg-navy px-4 py-6 text-white lg:flex lg:h-full lg:w-[260px] lg:flex-col">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(47,111,237,0.35),transparent_50%),radial-gradient(circle_at_80%_100%,rgba(91,163,224,0.2),transparent_45%)]"
         />
-        <div className="relative flex h-full flex-col">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <AdminNav active={active} pendingEdits={pendingEdits} />
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
           <div>
             <p className="text-base font-extrabold text-navy">Dev-Afrique</p>

@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, getErrorMessage } from "@/lib/api/client";
 import { parseBulkInviteCsv, type BulkInviteRow } from "@/lib/parse-bulk-invite-csv";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInvit
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<BulkInviteRow[]>([]);
   const [parseErrors, setParseErrors] = useState<Array<{ line: number; message: string }>>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const inviteMutation = useMutation({
     mutationFn: () =>
@@ -43,7 +44,9 @@ export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInvit
       onClose();
     },
     onError: (error) => {
-      onError(error.message);
+      const message = getErrorMessage(error);
+      setSubmitError(message);
+      onError(message);
     },
   });
 
@@ -51,6 +54,7 @@ export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInvit
     setFileName(null);
     setRows([]);
     setParseErrors([]);
+    setSubmitError(null);
   }
 
   function handleClose() {
@@ -67,6 +71,7 @@ export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInvit
     setFileName(file.name);
     setRows(parsed.rows);
     setParseErrors(parsed.errors);
+    setSubmitError(null);
   }
 
   if (!open) return null;
@@ -122,6 +127,13 @@ export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInvit
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {submitError ? (
+            <div className="mb-4 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
+              <p className="font-semibold">Could not send invitations</p>
+              <p className="mt-1">{submitError}</p>
+            </div>
+          ) : null}
+
           {parseErrors.length > 0 ? (
             <div className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
               <p className="font-semibold">Fix these rows before inviting:</p>

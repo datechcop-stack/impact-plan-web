@@ -125,8 +125,22 @@ async function proxy(
   const hasBody = method !== "GET" && method !== "HEAD";
   const body = hasBody ? Buffer.from(await request.arrayBuffer()) : undefined;
 
-  // Node http(s) — not Next's patched fetch — so Cookie is never stripped.
-  const upstream = await upstreamRequest(targetUrl, { method, headers, body });
+  let upstream: Awaited<ReturnType<typeof upstreamRequest>>;
+  try {
+    // Node http(s) — not Next's patched fetch — so Cookie is never stripped.
+    upstream = await upstreamRequest(targetUrl, { method, headers, body });
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : "Connection failed";
+    return Response.json(
+      {
+        error: {
+          code: "BAD_GATEWAY",
+          message: `Could not reach the API at ${targetUrl.origin}. ${detail}`,
+        },
+      },
+      { status: 502, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   const secure = request.nextUrl.protocol === "https:";
   const headerPairs: [string, string][] = [
