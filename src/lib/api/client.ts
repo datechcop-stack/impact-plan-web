@@ -46,7 +46,11 @@ export function messageFromErrorBody(body: unknown, status: number): string {
 
   const record = body as Record<string, unknown>;
   if (typeof record.message === "string" && record.message.trim()) {
-    return record.message.trim();
+    const msg = record.message.trim();
+    if (status === 404 && /^Route (GET|POST|PUT|PATCH|DELETE):\/v1\//i.test(msg)) {
+      return `${msg} — Stop the old API on port 4000 and run \`pnpm dev\` in impact-plan-api (latest main). Check GET /v1/auth/csrf returns 200 and GET /health includes "apiVersion":2.`;
+    }
+    return msg;
   }
 
   const err = record.error;

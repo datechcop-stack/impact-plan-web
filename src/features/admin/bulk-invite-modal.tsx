@@ -3,7 +3,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, getErrorMessage } from "@/lib/api/client";
+import { bulkInviteUsers } from "@/lib/api/bulk-invite";
+import { getErrorMessage } from "@/lib/api/client";
 import { parseBulkInviteCsv, type BulkInviteRow } from "@/lib/parse-bulk-invite-csv";
 import { cn } from "@/lib/utils";
 
@@ -14,11 +15,6 @@ type BulkInviteModalProps = {
   onError: (message: string) => void;
 };
 
-type BulkInviteResponse = {
-  invited: number;
-  failed: Array<{ email: string; message: string }>;
-};
-
 export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInviteModalProps) {
   const queryClient = useQueryClient();
   const [fileName, setFileName] = useState<string | null>(null);
@@ -27,11 +23,7 @@ export function BulkInviteModal({ open, onClose, onSuccess, onError }: BulkInvit
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const inviteMutation = useMutation({
-    mutationFn: () =>
-      apiFetch<BulkInviteResponse>("/admin/users/bulk-invite", {
-        method: "POST",
-        json: { invites: rows, remindCreatePlan: true },
-      }),
+    mutationFn: () => bulkInviteUsers(rows, { remindCreatePlan: true }),
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       const failCount = data.failed.length;
