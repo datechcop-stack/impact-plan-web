@@ -46,6 +46,7 @@ export function AdminUsersClient() {
     PROGRAMME_COMPONENT_TEMPLATE,
   );
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [editingLineManagerId, setEditingLineManagerId] = useState<string | null>(null);
   const [lineManagerDraft, setLineManagerDraft] = useState("");
   const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
@@ -121,18 +122,36 @@ export function AdminUsersClient() {
     },
   });
 
+  const revokeInviteMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: true; mode: "deleted" | "disabled" }>(`/admin/users/${id}/revoke-invite`, {
+        method: "POST",
+        json: {},
+      }),
+    onSuccess: async (_data, id) => {
+      const removed = usersQuery.data?.items.find((user) => user.id === id);
+      toast.success(
+        "Invitation revoked",
+        `${removed?.fullName ?? "User"} will no longer be able to activate.`,
+      );
+      setConfirmRevokeId(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (error) => {
+      toast.error("Revoke failed", getErrorMessage(error));
+    },
+  });
+
   const removeMutation = useMutation({
     mutationFn: (id: string) =>
       apiFetch<{ ok: true; mode: "deleted" | "disabled" }>(`/admin/users/${id}`, {
         method: "DELETE",
       }),
-    onSuccess: async (data, id) => {
+    onSuccess: async (_data, id) => {
       const removed = usersQuery.data?.items.find((user) => user.id === id);
       toast.success(
-        data.mode === "deleted" ? "User removed" : "User disabled",
-        data.mode === "deleted"
-          ? `${removed?.fullName ?? "User"} was deleted.`
-          : `${removed?.fullName ?? "User"} can no longer sign in.`,
+        "Access removed",
+        `${removed?.fullName ?? "User"} can no longer sign in. Their plan history is kept.`,
       );
       setConfirmRemoveId(null);
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
@@ -191,7 +210,8 @@ export function AdminUsersClient() {
                   <tbody>
                     {usersQuery.data.items.map((user) => {
                       const isSelf = meQuery.data?.id === user.id;
-                      const confirming = confirmRemoveId === user.id;
+                      const confirmingRemove = confirmRemoveId === user.id;
+                      const confirmingRevoke = confirmRevokeId === user.id;
                       return (
                         <tr key={user.id} className="border-t border-border">
                           <td className="py-3">
@@ -283,19 +303,53 @@ export function AdminUsersClient() {
                           <td className="text-right">
                             <div className="flex flex-wrap items-center justify-end gap-3">
                               {user.status === "INVITED" ? (
-                                <Button
-                                  variant="link"
-                                  onClick={() => resendMutation.mutate(user.id)}
-                                  loading={
-                                    resendMutation.isPending && resendMutation.variables === user.id
-                                  }
-                                  loadingText="Sending…"
-                                >
-                                  Resend
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="link"
+                                    onClick={() => resendMutation.mutate(user.id)}
+                                    loading={
+                                      resendMutation.isPending &&
+                                      resendMutation.variables === user.id
+                                    }
+                                    loadingText="Sending…"
+                                  >
+                                    Resend
+                                  </Button>
+                                  {confirmingRevoke ? (
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="danger"
+                                        size="sm"
+                                        loading={
+                                          revokeInviteMutation.isPending &&
+                                          revokeInviteMutation.variables === user.id
+                                        }
+                                        loadingText="Revoking…"
+                                        onClick={() => revokeInviteMutation.mutate(user.id)}
+                                      >
+                                        Confirm revoke
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setConfirmRevokeId(null)}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      variant="link"
+                                      className="text-danger"
+                                      onClick={() => setConfirmRevokeId(user.id)}
+                                    >
+                                      Revoke invite
+                                    </Button>
+                                  )}
+                                </>
                               ) : null}
-                              {user.status !== "DISABLED" && !isSelf ? (
-                                confirming ? (
+                              {user.status === "ACTIVE" && !isSelf ? (
+                                confirmingRemove ? (
                                   <div className="flex items-center gap-2">
                                     <Button
                                       variant="danger"
@@ -323,7 +377,7 @@ export function AdminUsersClient() {
                                     className="text-danger"
                                     onClick={() => setConfirmRemoveId(user.id)}
                                   >
-                                    Remove
+                                    Remove access
                                   </Button>
                                 )
                               ) : isSelf ? (
