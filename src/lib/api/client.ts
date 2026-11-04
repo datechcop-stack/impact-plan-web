@@ -134,7 +134,10 @@ export async function apiFetch<T>(
   options: RequestInit & { json?: unknown } = {},
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  const hasJsonBody = options.json !== undefined;
+  if (hasJsonBody) {
+    headers.set("Content-Type", "application/json");
+  }
   if (options.method && options.method !== "GET" && options.method !== "HEAD") {
     const token = await ensureCsrf();
     headers.set("x-csrf-token", token);
@@ -144,7 +147,7 @@ export async function apiFetch<T>(
     ...options,
     credentials: "include",
     headers,
-    body: options.json !== undefined ? JSON.stringify(options.json) : options.body,
+    body: hasJsonBody ? JSON.stringify(options.json) : options.body,
   });
 
   const body = await response.json().catch(() => null);

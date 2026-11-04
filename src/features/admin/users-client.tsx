@@ -146,6 +146,7 @@ export function AdminUsersClient() {
     mutationFn: (id: string) =>
       apiFetch<{ ok: true; mode: "deleted" | "disabled" }>(`/admin/users/${id}`, {
         method: "DELETE",
+        json: {},
       }),
     onSuccess: async (_data, id) => {
       const removed = usersQuery.data?.items.find((user) => user.id === id);
