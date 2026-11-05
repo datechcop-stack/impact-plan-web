@@ -36,6 +36,9 @@ export function AdminUsersClient() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "ACTIVE" | "INVITED" | "INVITE_EXPIRED" | "DISABLED"
+  >("ALL");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -57,9 +60,11 @@ export function AdminUsersClient() {
   });
 
   const usersQuery = useQuery({
-    queryKey: ["admin-users", q],
+    queryKey: ["admin-users", q, statusFilter],
     queryFn: () =>
-      apiFetch<ListResponse>(`/admin/users?q=${encodeURIComponent(q)}&page=1&pageSize=50`),
+      apiFetch<ListResponse>(
+        `/admin/users?q=${encodeURIComponent(q)}&status=${statusFilter}&page=1&pageSize=50`,
+      ),
   });
 
   const inviteMutation = useMutation({
@@ -187,6 +192,30 @@ export function AdminUsersClient() {
               value={q}
               onChange={(event) => setQ(event.target.value)}
             />
+            <div className="mt-4 flex flex-wrap gap-2">
+              {(
+                [
+                  ["ALL", "All"],
+                  ["ACTIVE", "Active"],
+                  ["INVITED", "Invited"],
+                  ["INVITE_EXPIRED", "Invite expired"],
+                  ["DISABLED", "Removed"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+                    statusFilter === value
+                      ? "border-navy bg-navy text-white"
+                      : "border-border bg-white text-muted"
+                  }`}
+                  onClick={() => setStatusFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {usersQuery.isError ? (
               <StateView className="mt-4" state="error" description="Sign in as admin first." />
             ) : !usersQuery.data?.items.length ? (

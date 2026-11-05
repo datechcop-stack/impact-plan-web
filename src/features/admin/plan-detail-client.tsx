@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,7 +77,10 @@ type AdminPlanDetail = {
 export function AdminPlanDetailClient() {
   const params = useParams<{ id: string }>();
   const planId = params.id;
+  const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const planQuery = useQuery({
     queryKey: ["admin-plan", planId],
@@ -103,6 +108,19 @@ export function AdminPlanDetailClient() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<{ ok: true }>(`/admin/plans/${planId}`, { method: "DELETE", json: {} }),
+    onSuccess: async () => {
+      toast.success("Plan deleted", "The impact plan was permanently removed.");
+      await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+      router.push("/admin/plans");
+    },
+    onError: (error) => {
+      toast.error("Delete failed", error.message);
     },
   });
 
@@ -188,12 +206,41 @@ export function AdminPlanDetailClient() {
               Reopen for review
             </Button>
           ) : null}
+          {confirmDelete ? (
+            <>
+              <Button
+                variant="danger"
+                loading={deleteMutation.isPending}
+                loadingText="Deleting…"
+                onClick={() => deleteMutation.mutate()}
+              >
+                Confirm delete
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+              Delete plan
+            </Button>
+          )}
         </div>
       </div>
 
-      {(lockMutation.isError || relockMutation.isError || reopenMutation.isError) && (
+      {(lockMutation.isError ||
+        relockMutation.isError ||
+        reopenMutation.isError ||
+        deleteMutation.isError) && (
         <p className="mt-3 text-sm text-danger">
-          {((lockMutation.error ?? relockMutation.error ?? reopenMutation.error) as Error).message}
+          {
+            (
+              (lockMutation.error ??
+                relockMutation.error ??
+                reopenMutation.error ??
+                deleteMutation.error) as Error
+            ).message
+          }
         </p>
       )}
       {plan.revisionOpen ? (

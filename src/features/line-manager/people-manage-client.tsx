@@ -14,6 +14,7 @@ import { cn, initials } from "@/lib/utils";
 type PeopleResponse = {
   counts: {
     all: number;
+    none: number;
     draft: number;
     locked: number;
     inReview: number;
@@ -29,7 +30,8 @@ type PeopleResponse = {
     id: string;
     fullName: string;
     jobTitle: string | null;
-    uiStatus: "DRAFT" | "LOCKED" | "IN_REVIEW" | "FINALIZED";
+    planId: string | null;
+    uiStatus: "NONE" | "DRAFT" | "LOCKED" | "IN_REVIEW" | "FINALIZED";
     stage:
       | "NONE"
       | "DRAFT"
@@ -78,8 +80,8 @@ export function PeopleManageClient() {
             People You Manage
           </h1>
           <p className="mt-1.5 text-sm text-muted">
-            Your direct reports. Once every entry is PM scored, add your overall comment and
-            finalize the plan.
+            Everyone who reports to you and their {new Date().getFullYear()} plan status. Open a
+            plan anytime to read it; comment and finalize only when year-end review is ready.
           </p>
         </div>
         {peopleQuery.data ? (
@@ -126,6 +128,7 @@ export function PeopleManageClient() {
             {(
               [
                 ["ALL", `All · ${peopleQuery.data!.counts.all}`],
+                ["NONE", `No plan · ${peopleQuery.data!.counts.none}`],
                 ["DRAFT", `Draft · ${peopleQuery.data!.counts.draft}`],
                 ["LOCKED", `Locked · ${peopleQuery.data!.counts.locked}`],
                 ["IN_REVIEW", `In Review · ${peopleQuery.data!.counts.inReview}`],
@@ -180,11 +183,14 @@ export function PeopleManageClient() {
                       <td>
                         <Badge
                           variant={
-                            person.stage === "FINALIZED" || person.stage === "READY_TO_FINALIZE"
-                              ? "success"
-                              : person.stage === "SELF_ASSESSMENT" || person.stage === "PM_SCORING"
-                                ? "warning"
-                                : "default"
+                            person.stage === "NONE"
+                              ? "muted"
+                              : person.stage === "FINALIZED" || person.stage === "READY_TO_FINALIZE"
+                                ? "success"
+                                : person.stage === "SELF_ASSESSMENT" ||
+                                    person.stage === "PM_SCORING"
+                                  ? "warning"
+                                  : "default"
                           }
                         >
                           {STAGE_LABEL[person.stage]}
@@ -209,37 +215,39 @@ export function PeopleManageClient() {
                       </td>
                       <td>{person.weightedScore != null ? `${person.weightedScore}%` : "—"}</td>
                       <td className="px-4">
-                        {person.stage === "READY_TO_FINALIZE" ? (
-                          <Link
-                            href={`/app/people/${person.id}`}
-                            className="inline-flex h-9 items-center rounded-lg bg-navy px-3 text-xs font-semibold text-white"
-                          >
-                            Review & finalize
-                          </Link>
-                        ) : person.stage === "GOAL_REVIEW" ? (
-                          <button
-                            type="button"
-                            className="text-sm font-semibold text-accent"
-                            onClick={() => remindMutation.mutate(person.id)}
-                          >
-                            Send reminder
-                          </button>
-                        ) : person.stage === "FINALIZED" ? (
-                          <Link
-                            href={`/app/people/${person.id}`}
-                            className="text-sm font-semibold text-accent"
-                          >
-                            View
-                          </Link>
-                        ) : (
-                          <span className="text-sm text-muted">
-                            {person.stage === "SELF_ASSESSMENT"
-                              ? "Waiting on self-assessment"
-                              : person.stage === "PM_SCORING"
-                                ? "Waiting on PM scores"
-                                : "Not ready to review"}
-                          </span>
-                        )}
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          {person.planId ? (
+                            <Link
+                              href={`/app/people/${person.id}`}
+                              className="text-sm font-semibold text-accent"
+                            >
+                              View plan
+                            </Link>
+                          ) : null}
+                          {person.stage === "READY_TO_FINALIZE" ? (
+                            <Link
+                              href={`/app/people/${person.id}`}
+                              className="inline-flex h-9 items-center rounded-lg bg-navy px-3 text-xs font-semibold text-white"
+                            >
+                              Review & finalize
+                            </Link>
+                          ) : person.stage === "GOAL_REVIEW" ? (
+                            <button
+                              type="button"
+                              className="text-sm font-semibold text-accent"
+                              onClick={() => remindMutation.mutate(person.id)}
+                            >
+                              Send reminder
+                            </button>
+                          ) : person.stage === "NONE" ? (
+                            <span className="text-sm text-muted">No plan yet</span>
+                          ) : person.stage === "DRAFT" ? (
+                            <span className="text-sm text-muted">Draft in progress</span>
+                          ) : person.stage === "SELF_ASSESSMENT" ||
+                            person.stage === "PM_SCORING" ? (
+                            <span className="text-sm text-muted">Read-only until review opens</span>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}

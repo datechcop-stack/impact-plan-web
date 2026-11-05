@@ -11,9 +11,22 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api/client";
+import { statusLabel, type PlanStatus } from "@/lib/plan";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const PLAN_YEAR = 2026;
+
+const PLAN_STATUS_FILTERS: Array<{ value: "ALL" | PlanStatus; label: string }> = [
+  { value: "ALL", label: "All statuses" },
+  { value: "DRAFT", label: statusLabel("DRAFT") },
+  { value: "LOCKED", label: statusLabel("LOCKED") },
+  { value: "PARTLY_UNLOCKED", label: statusLabel("PARTLY_UNLOCKED") },
+  { value: "UNLOCKED", label: statusLabel("UNLOCKED") },
+  { value: "REVIEW_OPEN", label: statusLabel("REVIEW_OPEN") },
+  { value: "IN_REVIEW", label: statusLabel("IN_REVIEW") },
+  { value: "FINALIZED", label: statusLabel("FINALIZED") },
+];
 
 type PlanItem = {
   id: string;
@@ -25,6 +38,7 @@ type PlanItem = {
 export function AdminPlansClient() {
   const toast = useToast();
   const [q, setQ] = useState("");
+  const [status, setStatus] = useState<"ALL" | PlanStatus>("ALL");
   const exportMutation = useMutation({
     mutationFn: () =>
       apiFetch<{ filename: string; csv: string }>(`/admin/plans/export?year=${PLAN_YEAR}`),
@@ -43,11 +57,19 @@ export function AdminPlansClient() {
     },
   });
   const plansQuery = useQuery({
-    queryKey: ["admin-plans", q],
-    queryFn: () =>
-      apiFetch<{ items: PlanItem[] }>(
-        `/admin/plans?year=2026&q=${encodeURIComponent(q)}&page=1&pageSize=50`,
-      ),
+    queryKey: ["admin-plans", q, status],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        year: String(PLAN_YEAR),
+        q,
+        page: "1",
+        pageSize: "50",
+      });
+      if (status !== "ALL") {
+        params.set("status", status);
+      }
+      return apiFetch<{ items: PlanItem[] }>(`/admin/plans?${params.toString()}`);
+    },
   });
 
   return (
@@ -84,6 +106,23 @@ export function AdminPlansClient() {
           value={q}
           onChange={(event) => setQ(event.target.value)}
         />
+        <div className="mt-4 flex flex-wrap gap-2">
+          {PLAN_STATUS_FILTERS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-sm font-semibold",
+                status === option.value
+                  ? "border-navy bg-navy text-white"
+                  : "border-border bg-white text-muted",
+              )}
+              onClick={() => setStatus(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
         {plansQuery.isLoading ? (
           <TableSkeleton className="mt-4 border-0 p-0 shadow-none" rows={6} columns={4} />
         ) : plansQuery.isError ? (

@@ -11,6 +11,8 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { PlanPageSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
+import { EntryObjectivesView } from "@/features/plan/entry-objectives-view";
+import type { ObjectiveView } from "@/features/plan/objectives";
 import { apiFetch } from "@/lib/api/client";
 import {
   COMPONENT_META,
@@ -47,6 +49,9 @@ type PersonPlanResponse = {
       entries: Array<{
         id: string;
         title: string;
+        dueDate: string;
+        manager: { fullName: string };
+        objectives: ObjectiveView[];
         selfAssessment: {
           result: "ACHIEVED" | "PARTLY" | "NOT";
           resultText: string;
@@ -77,6 +82,10 @@ type PersonPlanResponse = {
     pmTotal: number;
     commentAdded: boolean;
     readyForFinalReview: boolean;
+  };
+  permissions: {
+    canComment: boolean;
+    canFinalize: boolean;
   };
 };
 
@@ -129,10 +138,16 @@ export function FinalizeClient() {
     );
   }
 
-  const { plan, score, checklist } = planQuery.data;
+  const { plan, score, checklist, permissions } = planQuery.data;
   const canFinalize =
-    checklist.readyForFinalReview && comment.trim().length > 0 && plan.status === "IN_REVIEW";
-  const reviewLocked = plan.status === "IN_REVIEW" && !checklist.readyForFinalReview;
+    permissions.canFinalize && comment.trim().length > 0 && plan.status === "IN_REVIEW";
+  const showGoalDetails =
+    plan.status === "DRAFT" ||
+    plan.status === "LOCKED" ||
+    plan.status === "PARTLY_UNLOCKED" ||
+    plan.status === "UNLOCKED" ||
+    (plan.status === "REVIEW_OPEN" && !plan.submittedAt);
+  const readOnlyView = !permissions.canComment && plan.status !== "FINALIZED";
 
   return (
     <AppShell active="people" userName="LM">
@@ -160,11 +175,14 @@ export function FinalizeClient() {
         </div>
       </div>
 
-      {reviewLocked ? (
-        <div className="mt-6 rounded-lg bg-warning-soft px-4 py-3 text-sm text-navy">
-          Final review unlocks after {plan.owner.fullName.split(" ")[0]} submits their
-          self-assessment and every entry has a project manager score ({checklist.pmDone} of{" "}
-          {checklist.pmTotal} scored so far).
+      {readOnlyView ? (
+        <div className="mt-6 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
+          You can read this plan at any time. Line manager comment and finalize unlock after{" "}
+          {plan.owner.fullName.split(" ")[0]} submits self-assessment and every entry has a project
+          manager score
+          {plan.status === "IN_REVIEW"
+            ? ` (${checklist.pmDone} of ${checklist.pmTotal} scored so far).`
+            : "."}
         </div>
       ) : null}
 
@@ -197,153 +215,177 @@ export function FinalizeClient() {
                   </div>
                   <div className="mt-4 space-y-3">
                     {component.entries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="grid gap-3 border-t border-border pt-3 md:grid-cols-[1.2fr_1fr_0.4fr_1fr]"
-                      >
-                        <div>
+                      <div key={entry.id} className="border-t border-border pt-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
                           <p className="font-semibold text-navy">{entry.title}</p>
-                          {entry.selfAssessment ? (
-                            <Badge
-                              className="mt-1"
-                              variant={
-                                entry.selfAssessment.result === "ACHIEVED" ? "success" : "warning"
-                              }
-                            >
-                              {RESULT_LABEL[entry.selfAssessment.result]}
-                            </Badge>
-                          ) : null}
+                          <p className="text-xs text-muted">
+                            PM: {entry.manager?.fullName ?? "—"}
+                            {entry.dueDate
+                              ? ` · Due ${new Date(entry.dueDate).toLocaleDateString()}`
+                              : ""}
+                          </p>
                         </div>
-                        <p className="text-sm text-muted">
-                          {entry.selfAssessment?.resultText ?? "—"}
-                        </p>
-                        <p className="font-semibold text-navy">
-                          {entry.pmReview?.score != null ? `${entry.pmReview.score}%` : "—"}
-                        </p>
-                        <p className="text-sm text-muted">
-                          {entry.pmReview?.reviewer.fullName
-                            ? `${entry.pmReview.reviewer.fullName}: ${entry.pmReview.comment ?? ""}`
-                            : "—"}
-                        </p>
+                        {showGoalDetails ? (
+                          <EntryObjectivesView
+                            className="mt-3"
+                            objectives={entry.objectives ?? []}
+                            compact
+                          />
+                        ) : (
+                          <div className="mt-3 grid gap-3 md:grid-cols-[1.2fr_1fr_0.4fr_1fr]">
+                            <div>
+                              {entry.selfAssessment ? (
+                                <Badge
+                                  variant={
+                                    entry.selfAssessment.result === "ACHIEVED"
+                                      ? "success"
+                                      : "warning"
+                                  }
+                                >
+                                  {RESULT_LABEL[entry.selfAssessment.result]}
+                                </Badge>
+                              ) : (
+                                <span className="text-sm text-muted">No self-assessment</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted">
+                              {entry.selfAssessment?.resultText ?? "—"}
+                            </p>
+                            <p className="font-semibold text-navy">
+                              {entry.pmReview?.score != null ? `${entry.pmReview.score}%` : "—"}
+                            </p>
+                            <p className="text-sm text-muted">
+                              {entry.pmReview?.reviewer.fullName
+                                ? `${entry.pmReview.reviewer.fullName}: ${entry.pmReview.comment ?? ""}`
+                                : "—"}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </Card>
               );
             })}
-          <p className="text-xs text-muted">
-            Columns: entry & self-rated status · owner&apos;s result · PM score · PM comment
-          </p>
+          {!showGoalDetails ? (
+            <p className="text-xs text-muted">
+              Columns: entry & self-rated status · owner&apos;s result · PM score · PM comment
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-4">
-          <Card className="bg-navy text-white">
-            <p className="text-sm font-semibold text-white/80">Final weighted score</p>
-            <p className="mt-2 text-4xl font-extrabold">
-              {score.finalScore == null ? "—" : `${roundDisplay(score.finalScore)}%`}
-            </p>
-            <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-white/20">
-              {score.components.map((component) => (
-                <div
-                  key={component.type}
-                  className={COMPONENT_META[component.type].colorClass}
-                  style={{ width: `${component.weight}%` }}
-                />
-              ))}
-            </div>
-            <ul className="mt-4 space-y-1 text-sm text-white/85">
-              {score.components.map((component) => (
-                <li key={component.type}>
-                  {COMPONENT_META[component.type].shortLabel}{" "}
-                  {component.score == null ? "—" : roundDisplay(component.score)} ×{" "}
-                  {component.weight}% ={" "}
-                  {component.points == null ? "—" : roundDisplay(component.points)}
-                </li>
-              ))}
-            </ul>
-          </Card>
+          {!showGoalDetails ? (
+            <Card className="bg-navy text-white">
+              <p className="text-sm font-semibold text-white/80">Final weighted score</p>
+              <p className="mt-2 text-4xl font-extrabold">
+                {score.finalScore == null ? "—" : `${roundDisplay(score.finalScore)}%`}
+              </p>
+              <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-white/20">
+                {score.components.map((component) => (
+                  <div
+                    key={component.type}
+                    className={COMPONENT_META[component.type].colorClass}
+                    style={{ width: `${component.weight}%` }}
+                  />
+                ))}
+              </div>
+              <ul className="mt-4 space-y-1 text-sm text-white/85">
+                {score.components.map((component) => (
+                  <li key={component.type}>
+                    {COMPONENT_META[component.type].shortLabel}{" "}
+                    {component.score == null ? "—" : roundDisplay(component.score)} ×{" "}
+                    {component.weight}% ={" "}
+                    {component.points == null ? "—" : roundDisplay(component.points)}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
 
-          <Card>
-            <CardTitle>Your overall comment</CardTitle>
-            <p className="mt-1 text-sm text-muted">
-              {plan.revisionOpen
-                ? "This plan was reopened. Update the comment or recommendation, then finalize again. Tagged managers can update scores while it stays open."
-                : "One comment for the whole year. Separate from each PM's comment."}
-            </p>
-            <Label htmlFor="lm-comment" className="sr-only">
-              Overall comment
-            </Label>
-            <textarea
-              id="lm-comment"
-              className="mt-3 min-h-32 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              value={comment}
-              disabled={plan.status === "FINALIZED" || reviewLocked}
-              onChange={(event) => setComment(event.target.value)}
-            />
-            <Label
-              htmlFor="lm-recommendation"
-              className="mt-4 block text-sm font-semibold text-navy"
-            >
-              Recommendation (optional)
-            </Label>
-            <textarea
-              id="lm-recommendation"
-              className="mt-2 min-h-24 w-full rounded-lg border border-border px-3 py-2 text-sm"
-              value={recommendation}
-              disabled={plan.status === "FINALIZED" || reviewLocked}
-              placeholder="Promotion, development focus, or other LT recommendation"
-              onChange={(event) => setRecommendation(event.target.value)}
-            />
-            <ul className="mt-4 space-y-2 text-sm">
-              <li className={checklist.selfAssessmentSubmitted ? "text-success" : "text-muted"}>
-                {checklist.selfAssessmentSubmitted ? "✓" : "○"} Self-assessment submitted
-              </li>
-              <li className={checklist.pmReviewed ? "text-success" : "text-muted"}>
-                {checklist.pmReviewed ? "✓" : "○"} {checklist.pmDone} of {checklist.pmTotal} entries
-                PM Reviewed
-              </li>
-              <li className={comment.trim() ? "text-success" : "text-muted"}>
-                {comment.trim() ? "✓" : "○"} Overall comment added
-              </li>
-            </ul>
-            {plan.status !== "FINALIZED" ? (
-              <>
-                <Button
-                  className="mt-4"
-                  size="full"
-                  disabled={!canFinalize || finalizeMutation.isPending}
-                  onClick={() => finalizeMutation.mutate()}
-                >
-                  {plan.revisionOpen ? "Update & finalize" : "Finalize plan"}
-                </Button>
-                <p className="mt-2 text-xs text-muted">
-                  Finalizing asks {plan.owner.fullName.split(" ")[0]} to add employee feedback.
-                  Submitting that feedback concludes the plan for {plan.year}.
-                </p>
-                {finalizeMutation.isError ? (
-                  <p className="mt-2 text-sm text-danger">
-                    {(finalizeMutation.error as Error).message}
+          {permissions.canComment || plan.status === "FINALIZED" ? (
+            <Card>
+              <CardTitle>Your overall comment</CardTitle>
+              <p className="mt-1 text-sm text-muted">
+                {plan.revisionOpen
+                  ? "This plan was reopened. Update the comment or recommendation, then finalize again. Tagged managers can update scores while it stays open."
+                  : "One comment for the whole year. Separate from each PM's comment."}
+              </p>
+              <Label htmlFor="lm-comment" className="sr-only">
+                Overall comment
+              </Label>
+              <textarea
+                id="lm-comment"
+                className="mt-3 min-h-32 w-full rounded-lg border border-border px-3 py-2 text-sm"
+                value={comment}
+                disabled={plan.status === "FINALIZED" || !permissions.canComment}
+                onChange={(event) => setComment(event.target.value)}
+              />
+              <Label
+                htmlFor="lm-recommendation"
+                className="mt-4 block text-sm font-semibold text-navy"
+              >
+                Recommendation (optional)
+              </Label>
+              <textarea
+                id="lm-recommendation"
+                className="mt-2 min-h-24 w-full rounded-lg border border-border px-3 py-2 text-sm"
+                value={recommendation}
+                disabled={plan.status === "FINALIZED" || !permissions.canComment}
+                placeholder="Promotion, development focus, or other LT recommendation"
+                onChange={(event) => setRecommendation(event.target.value)}
+              />
+              <ul className="mt-4 space-y-2 text-sm">
+                <li className={checklist.selfAssessmentSubmitted ? "text-success" : "text-muted"}>
+                  {checklist.selfAssessmentSubmitted ? "✓" : "○"} Self-assessment submitted
+                </li>
+                <li className={checklist.pmReviewed ? "text-success" : "text-muted"}>
+                  {checklist.pmReviewed ? "✓" : "○"} {checklist.pmDone} of {checklist.pmTotal}{" "}
+                  entries PM Reviewed
+                </li>
+                <li className={comment.trim() ? "text-success" : "text-muted"}>
+                  {comment.trim() ? "✓" : "○"} Overall comment added
+                </li>
+              </ul>
+              {plan.status !== "FINALIZED" && permissions.canFinalize ? (
+                <>
+                  <Button
+                    className="mt-4"
+                    size="full"
+                    disabled={!canFinalize || finalizeMutation.isPending}
+                    onClick={() => finalizeMutation.mutate()}
+                  >
+                    {plan.revisionOpen ? "Update & finalize" : "Finalize plan"}
+                  </Button>
+                  <p className="mt-2 text-xs text-muted">
+                    Finalizing asks {plan.owner.fullName.split(" ")[0]} to add employee feedback.
+                    Submitting that feedback concludes the plan for {plan.year}.
                   </p>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <p className="mt-4 text-sm text-success">
-                  {plan.employeeFeedbackAt
-                    ? "Employee feedback is submitted. This plan is concluded."
-                    : `This plan is finalized. ${plan.owner.fullName.split(" ")[0]} can add employee feedback to conclude the year.`}
-                </p>
-                {plan.employeeFeedback ? (
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Employee feedback
+                  {finalizeMutation.isError ? (
+                    <p className="mt-2 text-sm text-danger">
+                      {(finalizeMutation.error as Error).message}
                     </p>
-                    <p className="mt-2 text-sm text-navy">{plan.employeeFeedback}</p>
-                  </div>
-                ) : null}
-              </>
-            )}
-          </Card>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="mt-4 text-sm text-success">
+                    {plan.employeeFeedbackAt
+                      ? "Employee feedback is submitted. This plan is concluded."
+                      : `This plan is finalized. ${plan.owner.fullName.split(" ")[0]} can add employee feedback to conclude the year.`}
+                  </p>
+                  {plan.employeeFeedback ? (
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                        Employee feedback
+                      </p>
+                      <p className="mt-2 text-sm text-navy">{plan.employeeFeedback}</p>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </Card>
+          ) : null}
         </div>
       </div>
     </AppShell>
