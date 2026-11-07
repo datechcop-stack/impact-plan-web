@@ -88,8 +88,8 @@ export function AdminPlansClient() {
       toast.success(
         "Plan deleted",
         removed
-          ? `${removed.owner.fullName}'s ${removed.year} impact plan was permanently removed.`
-          : "The impact plan was permanently removed.",
+          ? `${removed.owner.fullName}'s ${removed.year} impact plan was removed. An archived copy is kept.`
+          : "The impact plan was removed. An archived copy is kept.",
       );
       setConfirmDeleteId(null);
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
