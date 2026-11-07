@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
+import { StatusFilterHeader } from "@/components/ui/status-filter-header";
 import { useToast } from "@/components/ui/toast";
-import { apiFetch } from "@/lib/api/client";
-import { statusLabel, type PlanStatus } from "@/lib/plan";
+import { apiFetch, getErrorMessage } from "@/lib/api/client";
+import { statusBadgeVariant, statusLabel, type PlanStatus } from "@/lib/plan";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -31,14 +32,21 @@ const PLAN_STATUS_FILTERS: Array<{ value: "ALL" | PlanStatus; label: string }> =
 type PlanItem = {
   id: string;
   year: number;
-  status: string;
+  status: PlanStatus;
   owner: { id: string; fullName: string; email: string; jobTitle: string | null };
+};
+
+type PlansResponse = {
+  items: PlanItem[];
+  counts?: { all: number; byStatus: Partial<Record<PlanStatus, number>> };
 };
 
 export function AdminPlansClient() {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"ALL" | PlanStatus>("ALL");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const exportMutation = useMutation({
     mutationFn: () =>
       apiFetch<{ filename: string; csv: string }>(`/admin/plans/export?year=${PLAN_YEAR}`),
@@ -68,8 +76,39 @@ export function AdminPlansClient() {
       if (status !== "ALL") {
         params.set("status", status);
       }
-      return apiFetch<{ items: PlanItem[] }>(`/admin/plans?${params.toString()}`);
+      return apiFetch<PlansResponse>(`/admin/plans?${params.toString()}`);
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (planId: string) =>
+      apiFetch<{ ok: true }>(`/admin/plans/${planId}`, { method: "DELETE", json: {} }),
+    onSuccess: async (_data, planId) => {
+      const removed = plansQuery.data?.items.find((plan) => plan.id === planId);
+      toast.success(
+        "Plan deleted",
+        removed
+          ? `${removed.owner.fullName}'s ${removed.year} impact plan was permanently removed.`
+          : "The impact plan was permanently removed.",
+      );
+      setConfirmDeleteId(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+    onError: (error) => {
+      toast.error("Delete failed", getErrorMessage(error));
+    },
+  });
+
+  const counts = plansQuery.data?.counts;
+  const filterOptions = PLAN_STATUS_FILTERS.map((option) => {
+    const count =
+      option.value === "ALL"
+        ? counts?.all
+        : (counts?.byStatus[option.value] ?? (counts ? 0 : undefined));
+    return {
+      value: option.value,
+      label: count == null ? option.label : `${option.label} · ${count}`,
+    };
   });
 
   return (
@@ -107,7 +146,7 @@ export function AdminPlansClient() {
           onChange={(event) => setQ(event.target.value)}
         />
         <div className="mt-4 flex flex-wrap gap-2">
-          {PLAN_STATUS_FILTERS.map((option) => (
+          {filterOptions.map((option) => (
             <button
               key={option.value}
               type="button"
@@ -131,8 +170,12 @@ export function AdminPlansClient() {
           <StateView
             className="mt-4"
             state="empty"
-            title="No plans yet"
-            description="Create a plan for a staff member from Users or New plan."
+            title={status === "ALL" && !q ? "No plans yet" : "No plans match this filter"}
+            description={
+              status === "ALL" && !q
+                ? "Create a plan for a staff member from Users or New plan."
+                : "Try another status or clear the search."
+            }
           />
         ) : (
           <table className="mt-4 w-full text-left text-sm">
@@ -140,7 +183,7 @@ export function AdminPlansClient() {
               <tr>
                 <th className="py-2">Person</th>
                 <th>Year</th>
-                <th>Status</th>
+                <StatusFilterHeader value={status} options={filterOptions} onChange={setStatus} />
                 <th />
               </tr>
             </thead>
@@ -153,14 +196,46 @@ export function AdminPlansClient() {
                   </td>
                   <td>{plan.year}</td>
                   <td>
-                    <Badge variant={plan.status === "FINALIZED" ? "success" : "accent"}>
-                      {plan.status.replaceAll("_", " ")}
+                    <Badge variant={statusBadgeVariant(plan.status)}>
+                      {statusLabel(plan.status)}
                     </Badge>
                   </td>
                   <td className="text-right">
-                    <Link href={`/admin/plans/${plan.id}`} className="font-semibold text-accent">
-                      View
-                    </Link>
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      <Link href={`/admin/plans/${plan.id}`} className="font-semibold text-accent">
+                        View
+                      </Link>
+                      {confirmDeleteId === plan.id ? (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            loading={
+                              deleteMutation.isPending && deleteMutation.variables === plan.id
+                            }
+                            loadingText="Deleting…"
+                            onClick={() => deleteMutation.mutate(plan.id)}
+                          >
+                            Confirm delete
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmDeleteId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="link"
+                          className="text-danger"
+                          onClick={() => setConfirmDeleteId(plan.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TwoColumnFormSkeleton } from "@/components/ui/skeleton";
 import { StateView } from "@/components/ui/state-view";
+import { StatusFilterHeader } from "@/components/ui/status-filter-header";
 import { useToast } from "@/components/ui/toast";
 import { UserPicker } from "@/components/ui/user-picker";
 import { BulkInviteModal } from "@/features/admin/bulk-invite-modal";
@@ -30,15 +31,37 @@ type UserRow = {
   inviteStatus: string | null;
 };
 
-type ListResponse = { items: UserRow[]; total: number };
+type UserStatusFilter = "ALL" | "ACTIVE" | "INVITED" | "INVITE_EXPIRED" | "DISABLED";
+
+type ListResponse = {
+  items: UserRow[];
+  total: number;
+  counts?: {
+    all: number;
+    active: number;
+    invited: number;
+    inviteExpired: number;
+    disabled: number;
+  };
+};
+
+const USER_STATUS_FILTERS: Array<{
+  value: UserStatusFilter;
+  label: string;
+  countKey: keyof NonNullable<ListResponse["counts"]>;
+}> = [
+  { value: "ALL", label: "All", countKey: "all" },
+  { value: "ACTIVE", label: "Active", countKey: "active" },
+  { value: "INVITED", label: "Invited", countKey: "invited" },
+  { value: "INVITE_EXPIRED", label: "Invite expired", countKey: "inviteExpired" },
+  { value: "DISABLED", label: "Disabled", countKey: "disabled" },
+];
 
 export function AdminUsersClient() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "ALL" | "ACTIVE" | "INVITED" | "INVITE_EXPIRED" | "DISABLED"
-  >("ALL");
+  const [statusFilter, setStatusFilter] = useState<UserStatusFilter>("ALL");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -149,23 +172,32 @@ export function AdminUsersClient() {
 
   const removeMutation = useMutation({
     mutationFn: (id: string) =>
-      apiFetch<{ ok: true; mode: "deleted" | "disabled" }>(`/admin/users/${id}`, {
+      apiFetch<{ ok: true; mode: "deleted" }>(`/admin/users/${id}`, {
         method: "DELETE",
         json: {},
       }),
     onSuccess: async (_data, id) => {
       const removed = usersQuery.data?.items.find((user) => user.id === id);
       toast.success(
-        "Access removed",
-        `${removed?.fullName ?? "User"} can no longer sign in. Their plan history is kept.`,
+        "User deleted",
+        `${removed?.fullName ?? "The user"} and their impact plans were permanently removed.`,
       );
       setConfirmRemoveId(null);
-      await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-plans"] }),
+      ]);
     },
     onError: (error) => {
       toast.error("Remove failed", getErrorMessage(error));
     },
   });
+
+  const counts = usersQuery.data?.counts;
+  const statusFilterOptions = USER_STATUS_FILTERS.map(({ value, label, countKey }) => ({
+    value,
+    label: counts ? `${label} · ${counts[countKey]}` : label,
+  }));
 
   return (
     <AdminShell active="users">
@@ -175,8 +207,8 @@ export function AdminUsersClient() {
       </h1>
       <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
-          Invite staff, set their line manager, track activation, and remove people who should no
-          longer have access.
+          Invite staff, set their line manager, track activation, and permanently delete people who
+          should no longer be in Impact Plan.
         </p>
         <Button variant="secondary" onClick={() => setBulkInviteOpen(true)}>
           Bulk invite (CSV)
@@ -193,26 +225,18 @@ export function AdminUsersClient() {
               onChange={(event) => setQ(event.target.value)}
             />
             <div className="mt-4 flex flex-wrap gap-2">
-              {(
-                [
-                  ["ALL", "All"],
-                  ["ACTIVE", "Active"],
-                  ["INVITED", "Invited"],
-                  ["INVITE_EXPIRED", "Invite expired"],
-                  ["DISABLED", "Removed"],
-                ] as const
-              ).map(([value, label]) => (
+              {statusFilterOptions.map((option) => (
                 <button
-                  key={value}
+                  key={option.value}
                   type="button"
                   className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                    statusFilter === value
+                    statusFilter === option.value
                       ? "border-navy bg-navy text-white"
                       : "border-border bg-white text-muted"
                   }`}
-                  onClick={() => setStatusFilter(value)}
+                  onClick={() => setStatusFilter(option.value)}
                 >
-                  {label}
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -222,8 +246,12 @@ export function AdminUsersClient() {
               <StateView
                 className="mt-4"
                 state="empty"
-                title="No users yet"
-                description="Invite your first staff member to get started."
+                title={statusFilter === "ALL" && !q ? "No users yet" : "No users match this filter"}
+                description={
+                  statusFilter === "ALL" && !q
+                    ? "Invite your first staff member to get started."
+                    : "Try another status or clear the search."
+                }
               />
             ) : (
               <div className="mt-4 overflow-x-auto">
@@ -233,7 +261,11 @@ export function AdminUsersClient() {
                       <th className="py-2">Name</th>
                       <th>Line manager</th>
                       <th>Sign-in</th>
-                      <th>Status</th>
+                      <StatusFilterHeader
+                        value={statusFilter}
+                        options={statusFilterOptions}
+                        onChange={setStatusFilter}
+                      />
                       <th />
                     </tr>
                   </thead>
@@ -324,7 +356,7 @@ export function AdminUsersClient() {
                               {user.status === "ACTIVE"
                                 ? "Active"
                                 : user.status === "DISABLED"
-                                  ? "Removed"
+                                  ? "Disabled"
                                   : user.inviteStatus === "EXPIRED"
                                     ? "Invite expired"
                                     : "Invited"}
@@ -378,9 +410,13 @@ export function AdminUsersClient() {
                                   )}
                                 </>
                               ) : null}
-                              {user.status === "ACTIVE" && !isSelf ? (
+                              {(user.status === "ACTIVE" || user.status === "DISABLED") &&
+                              !isSelf ? (
                                 confirmingRemove ? (
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex flex-wrap items-center justify-end gap-2">
+                                    <span className="text-xs text-danger">
+                                      Deletes their account and impact plans. This cannot be undone.
+                                    </span>
                                     <Button
                                       variant="danger"
                                       size="sm"
@@ -388,10 +424,10 @@ export function AdminUsersClient() {
                                         removeMutation.isPending &&
                                         removeMutation.variables === user.id
                                       }
-                                      loadingText="Removing…"
+                                      loadingText="Deleting…"
                                       onClick={() => removeMutation.mutate(user.id)}
                                     >
-                                      Confirm remove
+                                      Delete permanently
                                     </Button>
                                     <Button
                                       variant="ghost"
@@ -407,7 +443,7 @@ export function AdminUsersClient() {
                                     className="text-danger"
                                     onClick={() => setConfirmRemoveId(user.id)}
                                   >
-                                    Remove access
+                                    Delete user
                                   </Button>
                                 )
                               ) : isSelf ? (
