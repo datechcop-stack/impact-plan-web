@@ -180,7 +180,7 @@ export function AdminUsersClient() {
       const removed = usersQuery.data?.items.find((user) => user.id === id);
       toast.success(
         "User deleted",
-        `${removed?.fullName ?? "The user"} and their impact plans were permanently removed.`,
+        `${removed?.fullName ?? "The user"} and their impact plans were removed. An archived copy is kept.`,
       );
       setConfirmRemoveId(null);
       await Promise.all([
@@ -207,8 +207,8 @@ export function AdminUsersClient() {
       </h1>
       <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
-          Invite staff, set their line manager, track activation, and permanently delete people who
-          should no longer be in Impact Plan.
+          Invite staff, set their line manager, track activation, and delete people who should no
+          longer be in Impact Plan.
         </p>
         <Button variant="secondary" onClick={() => setBulkInviteOpen(true)}>
           Bulk invite (CSV)
@@ -415,7 +415,8 @@ export function AdminUsersClient() {
                                 confirmingRemove ? (
                                   <div className="flex flex-wrap items-center justify-end gap-2">
                                     <span className="text-xs text-danger">
-                                      Deletes their account and impact plans. This cannot be undone.
+                                      Removes their account and impact plans from the app. An
+                                      archived copy is kept.
                                     </span>
                                     <Button
                                       variant="danger"
@@ -427,7 +428,7 @@ export function AdminUsersClient() {
                                       loadingText="Deleting…"
                                       onClick={() => removeMutation.mutate(user.id)}
                                     >
-                                      Delete permanently
+                                      Confirm delete
                                     </Button>
                                     <Button
                                       variant="ghost"

@@ -115,7 +115,7 @@ export function AdminPlanDetailClient() {
     mutationFn: () =>
       apiFetch<{ ok: true }>(`/admin/plans/${planId}`, { method: "DELETE", json: {} }),
     onSuccess: async () => {
-      toast.success("Plan deleted", "The impact plan was permanently removed.");
+      toast.success("Plan deleted", "The impact plan was removed. An archived copy is kept.");
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
       router.push("/admin/plans");
     },
