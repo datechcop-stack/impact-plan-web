@@ -1,5 +1,6 @@
 "use client";
 
+import { FormattedText } from "@/components/ui/formatted-text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -135,7 +136,9 @@ export function MyPlanClient() {
     setDraftEvidence(entry.selfAssessment?.evidenceUrl ?? "");
   }
 
+  const adminUnlocked = Boolean(planQuery.data?.plan?.adminUnlocked);
   const isEditing =
+    adminUnlocked ||
     planQuery.data?.plan?.status === "PARTLY_UNLOCKED" ||
     planQuery.data?.plan?.status === "UNLOCKED" ||
     planQuery.data?.plan?.status === "REVIEW_OPEN";
@@ -144,6 +147,7 @@ export function MyPlanClient() {
     const current = planQuery.data?.plan;
     if (!current) return;
     if (
+      !current.adminUnlocked &&
       current.status !== "PARTLY_UNLOCKED" &&
       current.status !== "UNLOCKED" &&
       current.status !== "REVIEW_OPEN"
@@ -154,7 +158,8 @@ export function MyPlanClient() {
     const unlocked = current.components.filter(
       (c) =>
         c.enabled &&
-        (current.status === "UNLOCKED" ||
+        (current.adminUnlocked ||
+          current.status === "UNLOCKED" ||
           current.status === "REVIEW_OPEN" ||
           c.lockState === "UNLOCKED"),
     );
@@ -226,6 +231,8 @@ export function MyPlanClient() {
   const isSelfAssessment =
     plan.status === "REVIEW_OPEN" && planQuery.data?.reviewCycle?.purpose !== "MIDYEAR_PLAN_UPDATE";
   const isInReview = plan.status === "IN_REVIEW" || plan.status === "FINALIZED";
+  // An admin unlock after submission lets the owner revise results without re-submitting.
+  const canEditAssessment = isSelfAssessment || (adminUnlocked && isInReview);
   const feedbackDue = plan.status === "FINALIZED" && !plan.employeeFeedbackAt;
   const concluded = plan.status === "FINALIZED" && Boolean(plan.employeeFeedbackAt);
   const isViewOnlyArchive = concluded || plan.year < 2026;
@@ -258,7 +265,15 @@ export function MyPlanClient() {
           your administrator when you are finished.
         </div>
       ) : null}
-      {isEditing && !isSelfAssessment ? (
+      {adminUnlocked ? (
+        <div className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
+          An administrator unlocked your plan at the {statusLabel(plan.status).toLowerCase()} stage.
+          You can update your entries
+          {isInReview ? " and self-assessment results" : ""}. Save your changes and notify the admin
+          when you are done.
+        </div>
+      ) : null}
+      {isEditing && !isSelfAssessment && !adminUnlocked ? (
         <div className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
           A component is unlocked for editing. Save changes & notify admin when you are done. You
           cannot remove existing entries — only add or update them.
@@ -418,7 +433,9 @@ export function MyPlanClient() {
                               ? `${entry.pmReview.score}%`
                               : "—"}
                           </td>
-                          <td className="max-w-xs text-muted">{entry.pmReview?.comment ?? "—"}</td>
+                          <td className="max-w-xs text-muted">
+                            <FormattedText text={entry.pmReview?.comment} />
+                          </td>
                         </tr>
                       );
                     })}
@@ -428,7 +445,7 @@ export function MyPlanClient() {
             </Card>
           ) : null}
 
-          {isSelfAssessment
+          {canEditAssessment
             ? allEntries.map((entry) => {
                 const component = plan.components.find((c) =>
                   c.entries.some((e) => e.id === entry.id),
@@ -466,10 +483,7 @@ export function MyPlanClient() {
                         </p>
                         <h2 className="mt-1 text-xl font-extrabold text-navy">{entry.title}</h2>
                         <div className="mt-4 rounded-lg bg-background p-3">
-                          <p className="text-xs font-semibold uppercase text-muted">
-                            Objectives & success criteria
-                          </p>
-                          <EntryObjectivesView className="mt-2" objectives={entry.objectives} />
+                          <EntryObjectivesView objectives={entry.objectives} />
                         </div>
                         <p className="mt-4 text-sm font-semibold text-navy">How did it go?</p>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -532,6 +546,7 @@ export function MyPlanClient() {
                 .filter((c) => c.enabled)
                 .map((component) => {
                   const unlocked =
+                    adminUnlocked ||
                     plan.status === "UNLOCKED" ||
                     plan.status === "REVIEW_OPEN" ||
                     component.lockState === "UNLOCKED";
@@ -820,16 +835,17 @@ export function MyPlanClient() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   Line manager comment
                 </p>
-                <p className="mt-2 text-sm text-navy">
-                  {plan.lineManagerComment ??
-                    `${plan.owner.lineManager?.fullName ?? "Your line manager"} adds this once every entry is PM reviewed.`}
-                </p>
+                <FormattedText
+                  className="mt-2 text-navy"
+                  text={plan.lineManagerComment}
+                  fallback={`${plan.owner.lineManager?.fullName ?? "Your line manager"} adds this once every entry is PM reviewed.`}
+                />
                 {plan.recommendation ? (
                   <div className="mt-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                       Recommendation
                     </p>
-                    <p className="mt-2 text-sm text-navy">{plan.recommendation}</p>
+                    <FormattedText className="mt-2 text-navy" text={plan.recommendation} />
                   </div>
                 ) : null}
                 {plan.status === "FINALIZED" ? (
@@ -864,7 +880,7 @@ export function MyPlanClient() {
                         ) : null}
                       </>
                     ) : (
-                      <p className="mt-2 text-sm text-navy">{plan.employeeFeedback}</p>
+                      <FormattedText className="mt-2 text-navy" text={plan.employeeFeedback} />
                     )}
                   </div>
                 ) : null}
@@ -872,7 +888,7 @@ export function MyPlanClient() {
             </Card>
           ) : null}
 
-          {!showPmTracker && (!isSelfAssessment || isEditing) ? (
+          {(!showPmTracker || adminUnlocked) && (!isSelfAssessment || isEditing) ? (
             <>
               <Card>
                 <CardTitle>Plan details</CardTitle>

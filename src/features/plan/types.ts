@@ -32,6 +32,7 @@ export type MyPlanResponse = {
   plan: {
     id: string;
     year: number;
+    adminUnlocked?: boolean;
     status:
       | "DRAFT"
       | "LOCKED"

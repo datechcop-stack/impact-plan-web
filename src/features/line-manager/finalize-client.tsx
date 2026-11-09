@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldHeading, FormattedText } from "@/components/ui/formatted-text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -232,8 +233,9 @@ export function FinalizeClient() {
                             compact
                           />
                         ) : (
-                          <div className="mt-3 grid gap-3 md:grid-cols-[1.2fr_1fr_0.4fr_1fr]">
+                          <div className="mt-3 grid gap-3 md:grid-cols-[0.8fr_1.4fr_0.4fr_1.2fr]">
                             <div>
+                              <FieldHeading className="mb-1">Self-assessment</FieldHeading>
                               {entry.selfAssessment ? (
                                 <Badge
                                   variant={
@@ -248,17 +250,31 @@ export function FinalizeClient() {
                                 <span className="text-sm text-muted">No self-assessment</span>
                               )}
                             </div>
-                            <p className="text-sm text-muted">
-                              {entry.selfAssessment?.resultText ?? "—"}
-                            </p>
-                            <p className="font-semibold text-navy">
-                              {entry.pmReview?.score != null ? `${entry.pmReview.score}%` : "—"}
-                            </p>
-                            <p className="text-sm text-muted">
-                              {entry.pmReview?.reviewer.fullName
-                                ? `${entry.pmReview.reviewer.fullName}: ${entry.pmReview.comment ?? ""}`
-                                : "—"}
-                            </p>
+                            <div>
+                              <FieldHeading className="mb-1">Result</FieldHeading>
+                              <FormattedText
+                                className="text-navy"
+                                text={entry.selfAssessment?.resultText}
+                              />
+                            </div>
+                            <div>
+                              <FieldHeading className="mb-1">PM score</FieldHeading>
+                              <p className="font-semibold text-navy">
+                                {entry.pmReview?.score != null ? `${entry.pmReview.score}%` : "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <FieldHeading className="mb-1">
+                                PM comment
+                                {entry.pmReview?.reviewer.fullName
+                                  ? ` · ${entry.pmReview.reviewer.fullName}`
+                                  : ""}
+                              </FieldHeading>
+                              <FormattedText
+                                className="text-muted"
+                                text={entry.pmReview?.comment}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -379,7 +395,7 @@ export function FinalizeClient() {
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                         Employee feedback
                       </p>
-                      <p className="mt-2 text-sm text-navy">{plan.employeeFeedback}</p>
+                      <FormattedText className="mt-2 text-navy" text={plan.employeeFeedback} />
                     </div>
                   ) : null}
                 </>
