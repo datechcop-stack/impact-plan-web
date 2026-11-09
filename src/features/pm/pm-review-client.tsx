@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldHeading, FormattedText } from "@/components/ui/formatted-text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -169,10 +170,7 @@ export function PmReviewClient() {
                 : "Self-assessment not submitted yet"}
           </p>
           <div className="mt-4 rounded-lg bg-background p-3">
-            <p className="text-xs font-semibold uppercase text-muted">
-              Objectives & success criteria
-            </p>
-            <EntryObjectivesView className="mt-2" objectives={entry.objectives} />
+            <EntryObjectivesView objectives={entry.objectives} />
           </div>
           {entry.selfAssessment ? (
             <div className="mt-6">
@@ -182,7 +180,8 @@ export function PmReviewClient() {
                 </h2>
                 <Badge variant="success">{RESULT_LABEL[entry.selfAssessment.result]}</Badge>
               </div>
-              <p className="mt-2 text-sm">{entry.selfAssessment.resultText}</p>
+              <FieldHeading className="mt-3">Result</FieldHeading>
+              <FormattedText className="mt-1 text-navy" text={entry.selfAssessment.resultText} />
               {entry.selfAssessment.evidenceUrl ? (
                 <a
                   href={entry.selfAssessment.evidenceUrl}

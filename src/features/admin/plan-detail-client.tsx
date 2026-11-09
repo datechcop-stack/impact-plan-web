@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldHeading, FormattedText } from "@/components/ui/formatted-text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ type AdminPlanDetail = {
   employeeFeedback: string | null;
   employeeFeedbackAt: string | null;
   revisionOpen: boolean;
+  adminUnlocked?: boolean;
   createdAt: string;
   lockedAt: string | null;
   submittedAt: string | null;
@@ -90,16 +92,19 @@ export function AdminPlanDetailClient() {
   const lockMutation = useMutation({
     mutationFn: () => apiFetch(`/admin/plans/${planId}/lock`, { method: "POST", json: {} }),
     onSuccess: async () => {
+      toast.success("Plan locked", "The owner can no longer edit this plan.");
       await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
     },
   });
 
-  const relockMutation = useMutation({
-    mutationFn: () => apiFetch(`/admin/plans/${planId}/relock`, { method: "POST", json: {} }),
+  const unlockMutation = useMutation({
+    mutationFn: () => apiFetch(`/admin/plans/${planId}/unlock`, { method: "POST", json: {} }),
     onSuccess: async () => {
+      toast.success("Plan unlocked", "The owner can now edit this plan at its current stage.");
       await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-edit-requests"] });
     },
   });
 
@@ -159,8 +164,11 @@ export function AdminPlanDetailClient() {
   }
 
   const plan = planQuery.data;
-  const canLock = plan.status === "DRAFT";
-  const canRelock = plan.status === "UNLOCKED" || plan.status === "PARTLY_UNLOCKED";
+  const adminUnlocked = Boolean(plan.adminUnlocked);
+  const isUnlocked =
+    plan.status === "UNLOCKED" || plan.status === "PARTLY_UNLOCKED" || adminUnlocked;
+  const canLock = plan.status === "DRAFT" || isUnlocked;
+  const canUnlock = plan.status !== "DRAFT" && plan.status !== "UNLOCKED" && !adminUnlocked;
   const canReopen = plan.status === "FINALIZED";
 
   return (
@@ -182,17 +190,24 @@ export function AdminPlanDetailClient() {
         </div>
         <div className="flex flex-wrap gap-2">
           {canLock ? (
-            <Button onClick={() => lockMutation.mutate()} disabled={lockMutation.isPending}>
+            <Button
+              onClick={() => lockMutation.mutate()}
+              disabled={lockMutation.isPending}
+              loading={lockMutation.isPending}
+              loadingText="Locking…"
+            >
               Lock plan
             </Button>
           ) : null}
-          {canRelock ? (
+          {canUnlock ? (
             <Button
               variant="secondary"
-              onClick={() => relockMutation.mutate()}
-              disabled={relockMutation.isPending}
+              onClick={() => unlockMutation.mutate()}
+              disabled={unlockMutation.isPending}
+              loading={unlockMutation.isPending}
+              loadingText="Unlocking…"
             >
-              Re-lock plan
+              {plan.status === "PARTLY_UNLOCKED" ? "Unlock whole plan" : "Unlock plan"}
             </Button>
           ) : null}
           {canReopen ? (
@@ -229,20 +244,27 @@ export function AdminPlanDetailClient() {
       </div>
 
       {(lockMutation.isError ||
-        relockMutation.isError ||
+        unlockMutation.isError ||
         reopenMutation.isError ||
         deleteMutation.isError) && (
         <p className="mt-3 text-sm text-danger">
           {
             (
               (lockMutation.error ??
-                relockMutation.error ??
+                unlockMutation.error ??
                 reopenMutation.error ??
                 deleteMutation.error) as Error
             ).message
           }
         </p>
       )}
+      {isUnlocked ? (
+        <p className="mt-3 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
+          {adminUnlocked
+            ? `Unlocked by an admin at the ${statusLabel(plan.status).toLowerCase()} stage. ${plan.owner.fullName.split(" ")[0]} can edit goals and self-assessment results until you lock it again.`
+            : `${plan.owner.fullName.split(" ")[0]} can edit ${plan.status === "PARTLY_UNLOCKED" ? "the unlocked sections of " : ""}this plan until you lock it again.`}
+        </p>
+      ) : null}
       {plan.revisionOpen ? (
         <p className="mt-3 text-sm text-navy">
           This plan is open for rescoring. Project managers can update scores and comments. The line
@@ -305,16 +327,26 @@ export function AdminPlanDetailClient() {
                             </p>
                           </div>
                           {entry.selfAssessment ? (
-                            <p className="mt-2 text-sm">
-                              Self: {entry.selfAssessment.result} —{" "}
-                              {entry.selfAssessment.resultText}
-                            </p>
+                            <div className="mt-3">
+                              <FieldHeading>
+                                Result · {entry.selfAssessment.result.replaceAll("_", " ")}
+                              </FieldHeading>
+                              <FormattedText
+                                className="mt-1 text-navy"
+                                text={entry.selfAssessment.resultText}
+                              />
+                            </div>
                           ) : null}
                           {entry.pmReview?.status === "REVIEWED" ? (
-                            <p className="mt-1 text-sm">
-                              PM: {entry.pmReview.score ?? "—"}
-                              {entry.pmReview.comment ? ` — ${entry.pmReview.comment}` : ""}
-                            </p>
+                            <div className="mt-3">
+                              <FieldHeading>
+                                PM review ·{" "}
+                                {entry.pmReview.score != null ? `${entry.pmReview.score}%` : "—"}
+                              </FieldHeading>
+                              {entry.pmReview.comment ? (
+                                <FormattedText className="mt-1" text={entry.pmReview.comment} />
+                              ) : null}
+                            </div>
                           ) : null}
                         </li>
                       ))}
@@ -340,11 +372,15 @@ export function AdminPlanDetailClient() {
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase text-muted">Line manager comment</dt>
-                <dd className="mt-1 text-navy">{plan.lineManagerComment ?? "—"}</dd>
+                <dd className="mt-1 text-navy">
+                  <FormattedText text={plan.lineManagerComment} />
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase text-muted">Recommendation</dt>
-                <dd className="mt-1 text-navy">{plan.recommendation ?? "—"}</dd>
+                <dd className="mt-1 text-navy">
+                  <FormattedText text={plan.recommendation} />
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase text-muted">Employee feedback</dt>
@@ -387,9 +423,10 @@ export function AdminPlanDetailClient() {
               </div>
             </dl>
             {plan.lineManagerComment ? (
-              <p className="mt-4 border-t border-border pt-3 text-sm text-muted">
-                {plan.lineManagerComment}
-              </p>
+              <FormattedText
+                className="mt-4 border-t border-border pt-3 text-muted"
+                text={plan.lineManagerComment}
+              />
             ) : null}
           </Card>
 
