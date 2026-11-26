@@ -511,10 +511,14 @@ export function MyPlanClient() {
                           </Label>
                           <Textarea
                             id={`result-${entry.id}`}
-                            className="mt-1 h-28"
+                            className="mt-1 h-48 resize-y"
                             value={draftText}
                             onChange={(event) => setDraftText(event.target.value)}
                           />
+                          <p className="mt-1 text-xs text-muted">
+                            No length limit. Drag the corner to make the box bigger. Start a line
+                            with • or 1. for a list.
+                          </p>
                         </div>
                         <div className="mt-3">
                           <Label htmlFor={`evidence-${entry.id}`}>Evidence link (optional)</Label>

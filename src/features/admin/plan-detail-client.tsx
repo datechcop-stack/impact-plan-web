@@ -35,6 +35,7 @@ type AdminPlanDetail = {
   employeeFeedbackAt: string | null;
   revisionOpen: boolean;
   adminUnlocked?: boolean;
+  lmCommentReopenedAt?: string | null;
   createdAt: string;
   lockedAt: string | null;
   submittedAt: string | null;
@@ -65,6 +66,8 @@ type AdminPlanDetail = {
         score: number | null;
         comment: string | null;
         status: string;
+        reopenedAt?: string | null;
+        reviewer?: { id: string; fullName: string } | null;
       } | null;
     }>;
   }>;
@@ -113,6 +116,41 @@ export function AdminPlanDetailClient() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
       await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+
+  const reopenPmReviewMutation = useMutation({
+    mutationFn: (entryId: string) =>
+      apiFetch(`/admin/plans/${planId}/entries/${entryId}/reopen-pm-review`, {
+        method: "POST",
+        json: {},
+      }),
+    onSuccess: async () => {
+      toast.success(
+        "PM review reopened",
+        "The project manager can edit the score and comment, then resubmit.",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+    onError: (error) => {
+      toast.error("Could not reopen PM review", error.message);
+    },
+  });
+
+  const reopenLmCommentMutation = useMutation({
+    mutationFn: () =>
+      apiFetch(`/admin/plans/${planId}/reopen-lm-comment`, { method: "POST", json: {} }),
+    onSuccess: async () => {
+      toast.success(
+        "Line manager comment reopened",
+        "The line manager can edit the comment, then finalize again.",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["admin-plan", planId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+    onError: (error) => {
+      toast.error("Could not reopen comment", error.message);
     },
   });
 
@@ -218,7 +256,18 @@ export function AdminPlanDetailClient() {
               loading={reopenMutation.isPending}
               loadingText="Reopening…"
             >
-              Reopen for review
+              Reopen all for rescoring
+            </Button>
+          ) : null}
+          {canReopen ? (
+            <Button
+              variant="secondary"
+              onClick={() => reopenLmCommentMutation.mutate()}
+              disabled={reopenLmCommentMutation.isPending}
+              loading={reopenLmCommentMutation.isPending}
+              loadingText="Reopening…"
+            >
+              Reopen line manager comment
             </Button>
           ) : null}
           {confirmDelete ? (
@@ -263,6 +312,13 @@ export function AdminPlanDetailClient() {
           {adminUnlocked
             ? `Unlocked by an admin at the ${statusLabel(plan.status).toLowerCase()} stage. ${plan.owner.fullName.split(" ")[0]} can edit goals and self-assessment results until you lock it again.`
             : `${plan.owner.fullName.split(" ")[0]} can edit ${plan.status === "PARTLY_UNLOCKED" ? "the unlocked sections of " : ""}this plan until you lock it again.`}
+        </p>
+      ) : null}
+      {plan.lmCommentReopenedAt && plan.status === "IN_REVIEW" ? (
+        <p className="mt-3 rounded-lg bg-warning-soft px-4 py-3 text-sm text-navy">
+          Line manager comment reopened {new Date(plan.lmCommentReopenedAt).toLocaleDateString()}.{" "}
+          {plan.owner.lineManager?.fullName ?? "The line manager"} can edit the comment and
+          recommendation, then finalize the plan again.
         </p>
       ) : null}
       {plan.revisionOpen ? (
@@ -337,12 +393,38 @@ export function AdminPlanDetailClient() {
                               />
                             </div>
                           ) : null}
-                          {entry.pmReview?.status === "REVIEWED" ? (
+                          {entry.pmReview?.status === "REVIEWED" || entry.pmReview?.reopenedAt ? (
                             <div className="mt-3">
-                              <FieldHeading>
-                                PM review ·{" "}
-                                {entry.pmReview.score != null ? `${entry.pmReview.score}%` : "—"}
-                              </FieldHeading>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <FieldHeading>
+                                  PM review
+                                  {entry.pmReview.reviewer
+                                    ? ` · ${entry.pmReview.reviewer.fullName}`
+                                    : ""}{" "}
+                                  ·{" "}
+                                  {entry.pmReview.score != null ? `${entry.pmReview.score}%` : "—"}
+                                </FieldHeading>
+                                {entry.pmReview.status === "REVIEWED" &&
+                                (plan.status === "LOCKED" ||
+                                  plan.status === "IN_REVIEW" ||
+                                  plan.status === "FINALIZED") ? (
+                                  <Button
+                                    variant="link"
+                                    className="text-xs"
+                                    loading={
+                                      reopenPmReviewMutation.isPending &&
+                                      reopenPmReviewMutation.variables === entry.id
+                                    }
+                                    loadingText="Reopening…"
+                                    onClick={() => reopenPmReviewMutation.mutate(entry.id)}
+                                  >
+                                    Reopen PM review
+                                  </Button>
+                                ) : entry.pmReview.reopenedAt &&
+                                  entry.pmReview.status !== "REVIEWED" ? (
+                                  <Badge variant="warning">Reopened · awaiting resubmission</Badge>
+                                ) : null}
+                              </div>
                               {entry.pmReview.comment ? (
                                 <FormattedText className="mt-1" text={entry.pmReview.comment} />
                               ) : null}

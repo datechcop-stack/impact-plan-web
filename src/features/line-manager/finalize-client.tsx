@@ -42,6 +42,7 @@ type PersonPlanResponse = {
     employeeFeedback: string | null;
     employeeFeedbackAt: string | null;
     revisionOpen: boolean;
+    lmCommentReopenedAt?: string | null;
     owner: { id: string; fullName: string; jobTitle: string | null };
     components: Array<{
       type: ComponentType;
@@ -176,6 +177,12 @@ export function FinalizeClient() {
         </div>
       </div>
 
+      {plan.lmCommentReopenedAt && plan.status === "IN_REVIEW" ? (
+        <div className="mt-6 rounded-lg bg-warning-soft px-4 py-3 text-sm text-navy">
+          An administrator reopened your comment. Edit the comment or recommendation, then resubmit
+          to finalize the plan again.
+        </div>
+      ) : null}
       {readOnlyView ? (
         <div className="mt-6 rounded-lg bg-accent-soft px-4 py-3 text-sm text-navy">
           You can read this plan at any time. Line manager comment and finalize unlock after{" "}
@@ -371,7 +378,11 @@ export function FinalizeClient() {
                     disabled={!canFinalize || finalizeMutation.isPending}
                     onClick={() => finalizeMutation.mutate()}
                   >
-                    {plan.revisionOpen ? "Update & finalize" : "Finalize plan"}
+                    {plan.lmCommentReopenedAt
+                      ? "Resubmit & finalize"
+                      : plan.revisionOpen
+                        ? "Update & finalize"
+                        : "Finalize plan"}
                   </Button>
                   <p className="mt-2 text-xs text-muted">
                     Finalizing asks {plan.owner.fullName.split(" ")[0]} to add employee feedback.

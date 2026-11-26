@@ -37,7 +37,12 @@ type EntryResponse = {
       resultText: string;
       evidenceUrl: string | null;
     } | null;
-    pmReview: { score: number | null; comment: string | null; status: string } | null;
+    pmReview: {
+      score: number | null;
+      comment: string | null;
+      status: string;
+      reopenedAt?: string | null;
+    } | null;
   };
   queue: { awaitingCount: number; awaitingIds: string[] };
 };
@@ -133,6 +138,8 @@ export function PmReviewClient() {
   const scoringPhase = !goalReviewPhase;
   const selfAssessmentReady = Boolean(entry.submittedAt) && Boolean(entry.selfAssessment);
   const scoringBlocked = scoringPhase && !selfAssessmentReady;
+  const reopenedByAdmin =
+    Boolean(entry.pmReview?.reopenedAt) && entry.pmReview?.status !== "REVIEWED";
   const readOnly =
     entry.planStatus === "FINALIZED" ||
     scoringBlocked ||
@@ -281,6 +288,12 @@ export function PmReviewClient() {
               Visible to {entry.owner.fullName.split(" ")[0]} and their line manager.
             </p>
           </div>
+          {reopenedByAdmin && !readOnly ? (
+            <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-navy">
+              An administrator reopened this review. Edit your{" "}
+              {goalReviewPhase ? "decision and comment" : "score and comment"}, then resubmit.
+            </p>
+          ) : null}
           {!readOnly ? (
             <div className="mt-4 space-y-2">
               {goalReviewPhase ? (
@@ -291,7 +304,7 @@ export function PmReviewClient() {
                     loading={markReviewed.isPending}
                     onClick={() => markReviewed.mutate("ACCEPT")}
                   >
-                    Accept goals & next
+                    {reopenedByAdmin ? "Resubmit · accept goals" : "Accept goals & next"}
                   </Button>
                   <Button
                     variant="secondary"
@@ -299,7 +312,7 @@ export function PmReviewClient() {
                     disabled={!comment.trim() || markReviewed.isPending}
                     onClick={() => markReviewed.mutate("REJECT")}
                   >
-                    Reject goals & next
+                    {reopenedByAdmin ? "Resubmit · reject goals" : "Reject goals & next"}
                   </Button>
                 </>
               ) : (
@@ -308,9 +321,11 @@ export function PmReviewClient() {
                   disabled={!comment.trim() || markReviewed.isPending}
                   onClick={() => markReviewed.mutate()}
                 >
-                  {revisionOpen && entry.pmReview?.status === "REVIEWED"
-                    ? "Update score & comment"
-                    : "Mark PM Reviewed & next entry"}
+                  {reopenedByAdmin
+                    ? "Resubmit score & comment"
+                    : revisionOpen && entry.pmReview?.status === "REVIEWED"
+                      ? "Update score & comment"
+                      : "Mark PM Reviewed & next entry"}
                 </Button>
               )}
               <Button
